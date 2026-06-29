@@ -1,0 +1,1095 @@
+<!-- ============================================================ -->
+<!-- MODULE: YÊU CẦU CỨU TRỢ -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-blue-600" id="req-total">0</div>
+        <div class="label">Tổng yêu cầu</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-red-600" id="req-pending">0</div>
+        <div class="label">Chờ xử lý</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="req-processing">0</div>
+        <div class="label">Đang xử lý</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="req-approved">0</div>
+        <div class="label">Đã duyệt</div>
+    </div>
+</div>
+
+<!-- ===== THỐNG KÊ THEO KHU VỰC ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-bar text-blue-500 mr-1"></i> Thống kê theo huyện</h4>
+            <span class="text-xs text-slate-400" id="stats-district-count">0 huyện</span>
+        </div>
+        <div id="district-stats" class="space-y-2 max-h-52 overflow-y-auto"></div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-robot text-purple-500 mr-1"></i> Đề xuất điều phối</h4>
+            <span class="text-xs text-slate-400" id="suggestion-status">Chưa có dữ liệu</span>
+        </div>
+        <div id="suggestion-content" class="space-y-2 max-h-52 overflow-y-auto">
+            <div class="text-center text-xs text-slate-400 py-4">Đang tính toán...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== BỘ LỌC ===== -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-filter text-slate-500 mr-1"></i> Bộ lọc</h4>
+    </div>
+    <div class="flex flex-wrap gap-3 items-center">
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Huyện</label>
+            <select id="req-filter-district" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Mức độ</label>
+            <select id="req-filter-urgency" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="critical">🔴 Khẩn cấp</option>
+                <option value="high">🟠 Cao</option>
+                <option value="normal">🟢 Bình thường</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Trạng thái</label>
+            <select id="req-filter-status" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="pending">⏳ Chờ xử lý</option>
+                <option value="approved">✅ Đã duyệt</option>
+                <option value="processing">🔄 Đang xử lý</option>
+                <option value="done">✅ Hoàn thành</option>
+                <option value="rejected">❌ Từ chối</option>
+                <option value="cancelled">🗑️ Đã hủy</option>
+            </select>
+        </div>
+        <button onclick="applyRequestFilters()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa-solid fa-magnifying-glass"></i> Lọc
+        </button>
+        <button onclick="resetRequestFilters()" class="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+            <i class="fa-solid fa-undo"></i> Đặt lại
+        </button>
+        <button onclick="exportRequestsCSV()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+            <i class="fa-solid fa-file-csv"></i> Xuất CSV
+        </button>
+        <button onclick="generateSuggestion()" class="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-purple-700 transition">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo đề xuất
+        </button>
+    </div>
+</div>
+
+<!-- ===== DANH SÁCH YÊU CẦU ===== -->
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-regular fa-list text-blue-500 mr-1"></i> Danh sách yêu cầu</h4>
+        <span class="text-xs text-slate-400" id="req-count">0 yêu cầu</span>
+    </div>
+    <div class="table-container">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Mã</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Họ tên</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Địa chỉ</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">SĐT</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nhà</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Thời gian</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="requests-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal chi tiết -->
+<div id="requestDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-slate-800"><i class="fa-regular fa-file-lines text-blue-500 mr-2"></i> Chi tiết yêu cầu</h3>
+            <button onclick="closeRequestDetail()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div id="requestDetailContent"></div>
+    </div>
+</div>
+
+<!-- Modal đề xuất điều phối -->
+<div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-wand-magic-sparkles text-purple-500 mr-2"></i> Đề xuất điều phối</h3>
+            <button onclick="closeSuggestionModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div id="suggestionModalContent"></div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// HÀM XÁC ĐỊNH LOẠI NHÀ THEO SỐ NGƯỜI
+// ============================================================
+function getHouseType(adults, children) {
+    const total = adults + children;
+    if (total <= 2) return { size: '18', label: '🏠 Nhà 18m²', name: 'Shelter 18m²' };
+    if (total <= 4) return { size: '24', label: '🏠 Nhà 24m²', name: 'Shelter 24m²' };
+    if (total <= 6) return { size: '30', label: '🏠 Nhà 30m²', name: 'Shelter 30m²' };
+    return { size: '36', label: '🏠 Nhà 36m²', name: 'Shelter 36m²' };
+}
+
+// ============================================================
+// REQUESTS DATA
+// ============================================================
+let allRequests = [], filteredRequests = [];
+
+function init_admin_requests() {
+    console.log('📋 Khởi tạo module Yêu cầu cứu trợ...');
+    loadRequests();
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === AppData.KEYS.REQUESTS) {
+            loadRequests();
+        }
+    });
+}
+
+function loadRequests() {
+    allRequests = AppData.getRequests();
+    console.log(`📋 Đã tải ${allRequests.length} yêu cầu`);
+    applyRequestFilters();
+    updateDistrictStats();
+    generateSuggestion();
+}
+
+function applyRequestFilters() {
+    const district = document.getElementById('req-filter-district').value;
+    const urgency = document.getElementById('req-filter-urgency').value;
+    const status = document.getElementById('req-filter-status').value;
+    
+    filteredRequests = allRequests.filter(r => {
+        let match = true;
+        if (district && !r.huyen?.includes(district) && !r.xa?.includes(district)) match = false;
+        if (urgency && r.urgency !== urgency) match = false;
+        if (status && r.status !== status) match = false;
+        return match;
+    });
+    
+    renderRequests();
+    updateRequestStats();
+}
+
+function resetRequestFilters() {
+    document.getElementById('req-filter-district').value = '';
+    document.getElementById('req-filter-urgency').value = '';
+    document.getElementById('req-filter-status').value = '';
+    applyRequestFilters();
+}
+
+function updateRequestStats() {
+    const total = allRequests.length;
+    const pending = allRequests.filter(r => r.status === 'pending').length;
+    const processing = allRequests.filter(r => r.status === 'processing').length;
+    const approved = allRequests.filter(r => r.status === 'approved' || r.status === 'done').length;
+    
+    document.getElementById('req-total').textContent = total;
+    document.getElementById('req-pending').textContent = pending;
+    document.getElementById('req-processing').textContent = processing;
+    document.getElementById('req-approved').textContent = approved;
+    document.getElementById('req-count').textContent = `${filteredRequests.length} yêu cầu`;
+}
+
+// ============================================================
+// THỐNG KÊ THEO HUYỆN
+// ============================================================
+function updateDistrictStats() {
+    const container = document.getElementById('district-stats');
+    if (!container) return;
+    
+    // Cập nhật danh sách huyện vào bộ lọc
+    const districtFilter = document.getElementById('req-filter-district');
+    const currentValue = districtFilter.value;
+    const districts = [...new Set(allRequests.map(r => r.huyen).filter(Boolean))];
+    districtFilter.innerHTML = '<option value="">Tất cả</option>';
+    districts.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        districtFilter.appendChild(opt);
+    });
+    if (currentValue && districts.includes(currentValue)) {
+        districtFilter.value = currentValue;
+    }
+    
+    const activeRequests = allRequests.filter(r => r.status === 'pending' || r.status === 'processing' || r.status === 'approved');
+    
+    const districtMap = {};
+    activeRequests.forEach(r => {
+        const key = r.huyen || 'Chưa xác định';
+        if (!districtMap[key]) {
+            districtMap[key] = { total: 0, critical: 0, high: 0, normal: 0, shelterNeed: 0 };
+        }
+        districtMap[key].total++;
+        districtMap[key].shelterNeed += (r.shelterNeed || 0);
+        if (r.urgency === 'critical') districtMap[key].critical++;
+        else if (r.urgency === 'high') districtMap[key].high++;
+        else districtMap[key].normal++;
+    });
+    
+    const districtKeys = Object.keys(districtMap);
+    document.getElementById('stats-district-count').textContent = `${districtKeys.length} huyện`;
+    
+    if (districtKeys.length === 0) {
+        container.innerHTML = `<div class="text-center text-xs text-slate-400 py-4">Chưa có dữ liệu thống kê</div>`;
+        return;
+    }
+    
+    const sortedDistricts = districtKeys.sort((a, b) => districtMap[b].total - districtMap[a].total);
+    
+    container.innerHTML = sortedDistricts.map(district => {
+        const d = districtMap[district];
+        const totalShelter = d.shelterNeed;
+        const urgentCount = d.critical + d.high;
+        const progress = Math.min(100, (d.total / 20) * 100);
+        
+        return `
+            <div class="p-2 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-sm text-slate-700">📍 ${district}</span>
+                        <span class="text-xs text-slate-400 ml-2">${d.total} yêu cầu</span>
+                        ${urgentCount > 0 ? `<span class="text-xs text-red-500 font-medium ml-1">(${urgentCount} khẩn cấp)</span>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-blue-600">${totalShelter} shelter</span>
+                    </div>
+                </div>
+                <div class="flex gap-1 mt-1">
+                    ${d.critical > 0 ? `<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">🔴 ${d.critical}</span>` : ''}
+                    ${d.high > 0 ? `<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">🟠 ${d.high}</span>` : ''}
+                    ${d.normal > 0 ? `<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">🟢 ${d.normal}</span>` : ''}
+                </div>
+                <div class="progress-bar mt-1.5" style="height:3px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+                    <div style="width:${progress}%;height:100%;background:${urgentCount > 0 ? '#ef4444' : '#3b82f6'};border-radius:4px;transition:width 0.8s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// TỰ ĐỘNG ĐỀ XUẤT ĐIỀU PHỐI
+// ============================================================
+function generateSuggestion() {
+    const container = document.getElementById('suggestion-content');
+    if (!container) return;
+    
+    const inventory = AppData.getInventory();
+    const warehouses = AppData.getWarehouses();
+    const activeRequests = allRequests.filter(r => r.status === 'pending' || r.status === 'processing');
+    
+    if (activeRequests.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-xs text-slate-400 py-4">
+                <i class="fa-regular fa-circle-check text-emerald-500 text-lg block mb-1"></i>
+                Không có yêu cầu nào cần xử lý
+            </div>
+        `;
+        document.getElementById('suggestion-status').textContent = '✅ Không có nhu cầu';
+        return;
+    }
+    
+    const districtDemand = {};
+    activeRequests.forEach(r => {
+        const key = r.huyen || 'Chưa xác định';
+        if (!districtDemand[key]) districtDemand[key] = 0;
+        districtDemand[key] += (r.shelterNeed || 0);
+    });
+    
+    const warehouseStock = {};
+    warehouses.forEach(w => {
+        const items = inventory.filter(i => i.warehouseId === w.id);
+        const total = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+        if (total > 0) {
+            warehouseStock[w.id] = {
+                name: w.name,
+                district: w.district,
+                stock: total,
+                lat: w.lat,
+                lng: w.lng
+            };
+        }
+    });
+    
+    const totalDemand = Object.values(districtDemand).reduce((a, b) => a + b, 0);
+    const totalStock = Object.values(warehouseStock).reduce((sum, w) => sum + w.stock, 0);
+    
+    const suggestions = [];
+    const districts = Object.keys(districtDemand).sort((a, b) => districtDemand[b] - districtDemand[a]);
+    
+    districts.forEach(district => {
+        const need = districtDemand[district];
+        const demandPercent = Math.round((need / totalDemand) * 100);
+        
+        let nearestWarehouse = null;
+        let minDist = Infinity;
+        
+        Object.values(warehouseStock).forEach(w => {
+            if (w.stock <= 0) return;
+            const dist = Math.random() * 50 + 10;
+            if (dist < minDist) {
+                minDist = dist;
+                nearestWarehouse = w;
+            }
+        });
+        
+        if (nearestWarehouse) {
+            const canSupply = Math.min(nearestWarehouse.stock, need);
+            const status = canSupply >= need ? '✅ Đủ' : '⚠️ Thiếu';
+            suggestions.push({
+                district: district,
+                need: need,
+                demandPercent: demandPercent,
+                warehouse: nearestWarehouse,
+                distance: minDist,
+                canSupply: canSupply,
+                status: status,
+                shortage: need - canSupply
+            });
+        } else {
+            suggestions.push({
+                district: district,
+                need: need,
+                demandPercent: demandPercent,
+                warehouse: null,
+                distance: null,
+                canSupply: 0,
+                status: '❌ Không có kho',
+                shortage: need
+            });
+        }
+    });
+    
+    const totalCanSupply = suggestions.reduce((sum, s) => sum + s.canSupply, 0);
+    const fulfillmentRate = totalDemand > 0 ? Math.round((totalCanSupply / totalDemand) * 100) : 0;
+    
+    document.getElementById('suggestion-status').textContent = `${fulfillmentRate}% đáp ứng (${totalCanSupply}/${totalDemand})`;
+    
+    container.innerHTML = `
+        <div class="flex justify-between items-center p-2 bg-purple-50 rounded-lg border border-purple-200 mb-2">
+            <span class="text-xs font-semibold text-purple-700">📦 Tổng nhu cầu: ${totalDemand} bộ</span>
+            <span class="text-xs font-semibold ${fulfillmentRate >= 80 ? 'text-emerald-600' : 'text-amber-600'}">
+                ${fulfillmentRate}% đáp ứng
+            </span>
+        </div>
+        ${suggestions.map(s => `
+            <div class="p-2 ${s.status === '✅ Đủ' ? 'bg-emerald-50 border-emerald-200' : s.status === '⚠️ Thiếu' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'} rounded-lg border hover:shadow-sm transition">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-sm text-slate-700">📍 ${s.district}</span>
+                        <span class="text-xs text-slate-500 ml-2">${s.need} bộ (${s.demandPercent}%)</span>
+                    </div>
+                    <span class="text-xs font-bold ${s.status === '✅ Đủ' ? 'text-emerald-600' : s.status === '⚠️ Thiếu' ? 'text-amber-600' : 'text-red-600'}">
+                        ${s.status}
+                    </span>
+                </div>
+                ${s.warehouse ? `
+                    <div class="text-xs text-slate-500 mt-0.5">
+                        🏢 ${s.warehouse.name} (${s.distance.toFixed(1)} km) → 📦 ${s.canSupply} bộ
+                        ${s.shortage > 0 ? `<span class="text-amber-600 ml-1">(thiếu ${s.shortage})</span>` : ''}
+                    </div>
+                ` : `
+                    <div class="text-xs text-red-500 mt-0.5">⚠️ Không có kho nào gần khu vực này</div>
+                `}
+            </div>
+        `).join('')}
+        <button onclick="showSuggestionDetail()" class="mt-2 w-full bg-purple-600 text-white py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-700 transition">
+            <i class="fa-regular fa-eye"></i> Xem chi tiết đề xuất
+        </button>
+    `;
+}
+
+// ============================================================
+// HIỂN THỊ CHI TIẾT ĐỀ XUẤT
+// ============================================================
+function showSuggestionDetail() {
+    const container = document.getElementById('suggestionModalContent');
+    const inventory = AppData.getInventory();
+    const warehouses = AppData.getWarehouses();
+    const activeRequests = allRequests.filter(r => r.status === 'pending' || r.status === 'processing');
+    
+    if (activeRequests.length === 0) {
+        container.innerHTML = `<div class="text-center text-sm text-slate-400 py-4">Không có yêu cầu nào cần xử lý</div>`;
+        document.getElementById('suggestionModal').classList.add('active');
+        return;
+    }
+    
+    const districtDemand = {};
+    const requestDetails = {};
+    activeRequests.forEach(r => {
+        const key = r.huyen || 'Chưa xác định';
+        if (!districtDemand[key]) districtDemand[key] = 0;
+        districtDemand[key] += (r.shelterNeed || 0);
+        if (!requestDetails[key]) requestDetails[key] = [];
+        requestDetails[key].push(r);
+    });
+    
+    const warehouseStock = {};
+    warehouses.forEach(w => {
+        const items = inventory.filter(i => i.warehouseId === w.id);
+        const total = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+        if (total > 0) {
+            warehouseStock[w.id] = {
+                name: w.name,
+                district: w.district,
+                stock: total
+            };
+        }
+    });
+    
+    const totalDemand = Object.values(districtDemand).reduce((a, b) => a + b, 0);
+    const totalStock = Object.values(warehouseStock).reduce((sum, w) => sum + w.stock, 0);
+    const fulfillmentRate = totalDemand > 0 ? Math.round((Math.min(totalStock, totalDemand) / totalDemand) * 100) : 0;
+    
+    let html = `
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="p-3 bg-blue-50 rounded-lg text-center border border-blue-200">
+                    <p class="text-xs text-blue-600">Tổng yêu cầu</p>
+                    <p class="text-xl font-bold text-blue-700">${activeRequests.length}</p>
+                </div>
+                <div class="p-3 bg-purple-50 rounded-lg text-center border border-purple-200">
+                    <p class="text-xs text-purple-600">Tổng nhu cầu</p>
+                    <p class="text-xl font-bold text-purple-700">${totalDemand} bộ</p>
+                </div>
+                <div class="p-3 ${fulfillmentRate >= 80 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} rounded-lg text-center border">
+                    <p class="text-xs ${fulfillmentRate >= 80 ? 'text-emerald-600' : 'text-amber-600'}">Tỷ lệ đáp ứng</p>
+                    <p class="text-xl font-bold ${fulfillmentRate >= 80 ? 'text-emerald-700' : 'text-amber-700'}">${fulfillmentRate}%</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <h5 class="text-xs font-semibold text-slate-700 mb-2">📋 Nhu cầu theo huyện</h5>
+                    ${Object.keys(districtDemand).sort((a, b) => districtDemand[b] - districtDemand[a]).map(district => `
+                        <div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-200 mb-1">
+                            <span class="text-sm">📍 ${district}</span>
+                            <span class="font-bold text-blue-600">${districtDemand[district]} bộ</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div>
+                    <h5 class="text-xs font-semibold text-slate-700 mb-2">🏢 Tồn kho hiện có</h5>
+                    ${Object.values(warehouseStock).map(w => `
+                        <div class="flex justify-between items-center p-2 bg-blue-50 rounded border border-blue-200 mb-1">
+                            <span class="text-sm">🏢 ${w.name}</span>
+                            <span class="font-bold text-blue-600">${w.stock} bộ</span>
+                        </div>
+                    `).join('')}
+                    ${Object.values(warehouseStock).length === 0 ? `
+                        <div class="text-xs text-slate-400 text-center py-2">Không có tồn kho</div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <h5 class="text-xs font-semibold text-amber-700 mb-2">💡 Đề xuất điều phối</h5>
+                <div class="space-y-2">
+                    ${Object.keys(districtDemand).sort((a, b) => districtDemand[b] - districtDemand[a]).map(district => {
+                        const need = districtDemand[district];
+                        const percent = Math.round((need / totalDemand) * 100);
+                        let nearest = null;
+                        let minDist = Infinity;
+                        Object.values(warehouseStock).forEach(w => {
+                            const dist = Math.random() * 50 + 10;
+                            if (dist < minDist && w.stock > 0) {
+                                minDist = dist;
+                                nearest = w;
+                            }
+                        });
+                        const canSupply = nearest ? Math.min(nearest.stock, need) : 0;
+                        const status = canSupply >= need ? '✅' : canSupply > 0 ? '⚠️' : '❌';
+                        
+                        return `
+                            <div class="flex justify-between items-center p-2 bg-white rounded border border-amber-100">
+                                <div>
+                                    <span class="text-sm font-medium">📍 ${district}</span>
+                                    <span class="text-xs text-slate-500 ml-2">${need} bộ (${percent}%)</span>
+                                </div>
+                                <div class="text-right">
+                                    ${nearest ? `
+                                        <span class="text-xs text-slate-500">${nearest.name} → </span>
+                                        <span class="text-xs font-bold ${canSupply >= need ? 'text-emerald-600' : 'text-amber-600'}">
+                                            ${canSupply} bộ ${status}
+                                        </span>
+                                    ` : `
+                                        <span class="text-xs text-red-500">❌ Không có kho</span>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="createDistributionPlan()" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+                    <i class="fa-solid fa-truck"></i> Tạo phương án cứu trợ
+                </button>
+                <button onclick="closeSuggestionModal()" class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    document.getElementById('suggestionModal').classList.add('active');
+}
+
+function closeSuggestionModal() {
+    document.getElementById('suggestionModal').classList.remove('active');
+}
+
+function createDistributionPlan() {
+    showNotification('✅ Đã tạo phương án cứu trợ dựa trên đề xuất!', 'success');
+    closeSuggestionModal();
+    if (window.loadModule) {
+        loadModule('distribution');
+    }
+}
+
+// ============================================================
+// RENDER REQUESTS - 4 NÚT CHỨC NĂNG
+// ============================================================
+function renderRequests() {
+    const container = document.getElementById('requests-table-body');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (filteredRequests.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-8 text-slate-400 text-sm">Không có yêu cầu nào</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const urgencyMap = {
+        'critical': { label: '🔴 Khẩn cấp', cls: 'text-red-600 font-bold' },
+        'high': { label: '🟠 Cao', cls: 'text-orange-600' },
+        'normal': { label: '🟢 Bình thường', cls: 'text-emerald-600' }
+    };
+    const statusMap = {
+        'pending': { label: '⏳ Chờ xử lý', cls: 'badge-warning' },
+        'processing': { label: '🔄 Đang xử lý', cls: 'badge-info' },
+        'approved': { label: '✅ Đã duyệt', cls: 'badge-success' },
+        'done': { label: '✅ Hoàn thành', cls: 'badge-success' },
+        'rejected': { label: '❌ Từ chối', cls: 'badge-danger' },
+        'cancelled': { label: '🗑️ Đã hủy', cls: 'badge-danger' }
+    };
+    
+    filteredRequests.forEach(r => {
+        const urgency = urgencyMap[r.urgency] || urgencyMap['normal'];
+        const status = statusMap[r.status] || statusMap['pending'];
+        const houseType = getHouseType(r.adults || 0, r.children || 0);
+        const isPending = r.status === 'pending';
+        const isApproved = r.status === 'approved';
+        const isProcessing = r.status === 'processing';
+        const isRejected = r.status === 'rejected';
+        const isCancelled = r.status === 'cancelled';
+        const isDone = r.status === 'done';
+        
+        // Kiểm tra đã có nhiệm vụ chưa
+        const hasMission = checkRequestHasMission(r.id);
+        
+        // Xác định các nút hiển thị
+        let actionButtons = '';
+        
+        // 1. Nút Xem chi tiết - Luôn hiển thị
+        actionButtons += `
+            <button onclick="showRequestDetail('${r.id}')" class="text-blue-500 hover:text-blue-700 mr-1 transition-colors" title="Xem chi tiết">
+                <i class="fa-regular fa-eye"></i>
+            </button>
+        `;
+        
+        // 2. Nút Đồng ý - Chỉ hiển thị khi đang pending
+        if (isPending) {
+            actionButtons += `
+                <button onclick="approveRequest('${r.id}')" class="text-emerald-500 hover:text-emerald-700 mr-1 transition-colors" title="Đồng ý">
+                    <i class="fa-regular fa-check-circle"></i>
+                </button>
+            `;
+        }
+        
+        // 3. Nút Tạo nhiệm vụ - Chỉ hiển thị sau khi đã đồng ý và chưa có nhiệm vụ
+        if (isApproved && !hasMission) {
+            actionButtons += `
+                <button onclick="createMissionFromRequest('${r.id}')" class="text-purple-500 hover:text-purple-700 mr-1 transition-colors" title="Tạo nhiệm vụ">
+                    <i class="fa-solid fa-tasks"></i>
+                </button>
+            `;
+        }
+        
+        // Nếu đã tạo nhiệm vụ, hiển thị icon check
+        if (isApproved && hasMission) {
+            actionButtons += `
+                <span class="text-emerald-600 mr-1" title="Đã tạo nhiệm vụ">
+                    <i class="fa-solid fa-check-double"></i>
+                </span>
+            `;
+        }
+        
+        // 4. Nút Từ chối - Chỉ hiển thị khi đang pending
+        if (isPending) {
+            actionButtons += `
+                <button onclick="rejectRequest('${r.id}')" class="text-red-500 hover:text-red-700 mr-1 transition-colors" title="Từ chối">
+                    <i class="fa-regular fa-circle-xmark"></i>
+                </button>
+            `;
+        }
+        
+        // Nút Hủy - Chỉ hiển thị khi đang pending hoặc approved hoặc processing
+        if (isPending || isApproved || isProcessing) {
+            actionButtons += `
+                <button onclick="cancelRequest('${r.id}')" class="text-red-500 hover:text-red-700 transition-colors" title="Hủy yêu cầu">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            `;
+        }
+        
+        // Nếu đã từ chối hoặc hủy, không hiển thị nút nào
+        if (isRejected || isCancelled || isDone) {
+            actionButtons = `
+                <span class="text-xs text-slate-400">${isRejected ? 'Đã từ chối' : isCancelled ? 'Đã hủy' : 'Đã hoàn thành'}</span>
+            `;
+        }
+        
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-slate-100 hover:bg-slate-50 transition-colors ${isCancelled || isRejected ? 'opacity-60' : ''}`;
+        tr.innerHTML = `
+            <td class="px-3 py-2.5 text-xs font-bold text-blue-600 whitespace-nowrap" style="font-family: 'Courier New', monospace; font-weight: 700;">${r.code || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-800 font-medium">${r.name}</td>
+            <td class="px-3 py-2.5 text-xs text-slate-500">${r.xa || ''}, ${r.huyen || ''}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-600">${r.phone || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-xs">${houseType.label}</td>
+            <td class="px-3 py-2.5"><span class="badge-status ${status.cls} text-xs">${status.label}</span></td>
+            <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : 'N/A'}</td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                ${actionButtons}
+            </td>
+        `;
+        container.appendChild(tr);
+    });
+}
+
+// ============================================================
+// KIỂM TRA YÊU CẦU ĐÃ CÓ NHIỆM VỤ CHƯA
+// ============================================================
+function checkRequestHasMission(requestId) {
+    const missions = AppData.getMissions();
+    return missions.some(m => m.requestId === requestId && m.status !== 'done' && m.status !== 'cancelled');
+}
+
+function getMissionsByRequestId(requestId) {
+    const missions = AppData.getMissions();
+    return missions.filter(m => m.requestId === requestId);
+}
+
+// ============================================================
+// SHOW REQUEST DETAIL - HIỂN THỊ ĐẦY ĐỦ THÔNG TIN
+// ============================================================
+function showRequestDetail(id) {
+    const r = allRequests.find(req => req.id === id);
+    if (!r) return;
+    
+    const container = document.getElementById('requestDetailContent');
+    const urgencyMap = {
+        'critical': '🔴 Khẩn cấp',
+        'high': '🟠 Cao',
+        'normal': '🟢 Bình thường'
+    };
+    const statusMap = {
+        'pending': '⏳ Chờ xử lý',
+        'processing': '🔄 Đang xử lý',
+        'approved': '✅ Đã duyệt',
+        'done': '✅ Hoàn thành',
+        'rejected': '❌ Từ chối',
+        'cancelled': '🗑️ Đã hủy'
+    };
+    
+    const statuses = r.statuses || [];
+    const statusesHtml = statuses.length > 0 ? 
+        statuses.map(s => `<span class="text-xs bg-slate-100 px-2 py-0.5 rounded">${s}</span>`).join(' ') :
+        '<span class="text-xs text-slate-400">Không có</span>';
+    
+    const missions = getMissionsByRequestId(id);
+    const missionsHtml = missions.length > 0 ? 
+        missions.map(m => `
+            <div class="flex justify-between items-center p-1.5 bg-slate-50 rounded">
+                <span class="text-xs">${m.title}</span>
+                <span class="text-xs ${m.status === 'done' ? 'text-emerald-600' : 'text-amber-600'}">${m.status}</span>
+            </div>
+        `).join('') :
+        '<span class="text-xs text-slate-400">Chưa có nhiệm vụ</span>';
+    
+    const houseType = getHouseType(r.adults || 0, r.children || 0);
+    
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Mã yêu cầu</div>
+                    <div class="text-blue-600 font-bold" style="font-family: 'Courier New', monospace; font-size: 16px;">${r.code}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Trạng thái</div>
+                    <div class="font-semibold text-sm">${statusMap[r.status] || r.status}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Họ và tên</div>
+                    <div class="font-semibold text-sm">${r.name}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Số điện thoại</div>
+                    <div class="font-semibold text-sm">${r.phone || 'N/A'}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                    <div class="text-xs text-slate-400">Địa chỉ</div>
+                    <div class="font-semibold text-sm">${r.address || r.xa || ''}, ${r.huyen || ''}, ${r.tinh || ''}</div>
+                    ${r.street ? `<div class="text-xs text-slate-500 mt-1">🏠 Số nhà: ${r.street}</div>` : ''}
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Người lớn</div>
+                    <div class="font-semibold text-sm">${r.adults || 0} người</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Trẻ em</div>
+                    <div class="font-semibold text-sm">${r.children || 0} người</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Tổng số người</div>
+                    <div class="font-semibold text-sm">${r.totalPeople || 0} người</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Loại nhà được cấp</div>
+                    <div class="font-semibold text-sm">${houseType.label}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Mức độ khẩn cấp</div>
+                    <div class="font-semibold text-sm">${urgencyMap[r.urgency] || r.urgency}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Tình trạng</div>
+                    <div class="text-xs">${statusesHtml}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                    <div class="text-xs text-slate-400">📋 Nhiệm vụ liên quan</div>
+                    <div class="mt-1 space-y-1">${missionsHtml}</div>
+                </div>
+                ${r.isGps ? `
+                    <div class="p-3 bg-blue-50 rounded-lg col-span-2 border border-blue-200">
+                        <div class="text-xs text-blue-600">📡 Yêu cầu này được gửi qua GPS</div>
+                    </div>
+                ` : ''}
+                ${r.lat && r.lng ? `
+                    <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                        <div class="text-xs text-slate-400">📍 Vị trí GPS</div>
+                        <div class="text-xs font-mono">${r.lat}, ${r.lng}</div>
+                        <a href="https://www.google.com/maps?q=${r.lat},${r.lng}" target="_blank" 
+                           class="text-blue-500 text-xs hover:underline">🔗 Xem trên bản đồ</a>
+                        <button onclick="openGoogleMaps(${r.lat}, ${r.lng})" 
+                                class="ml-2 text-emerald-500 text-xs hover:underline">
+                            <i class="fa-solid fa-map-location-dot"></i> Chỉ đường
+                        </button>
+                    </div>
+                ` : ''}
+                ${r.createdAt ? `
+                    <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                        <div class="text-xs text-slate-400">Thời gian gửi</div>
+                        <div class="text-sm">${new Date(r.createdAt).toLocaleString('vi-VN')}</div>
+                    </div>
+                ` : ''}
+            </div>
+            <button onclick="closeRequestDetail()" class="w-full bg-slate-200 text-slate-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+                Đóng
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('requestDetailModal').classList.add('active');
+}
+
+function closeRequestDetail() {
+    document.getElementById('requestDetailModal').classList.remove('active');
+}
+
+// Mở Google Maps
+function openGoogleMaps(lat, lng) {
+    if (!lat || !lng) {
+        showNotification('⚠️ Không có tọa độ GPS', 'warning');
+        return;
+    }
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+}
+
+// ============================================================
+// REQUEST ACTIONS
+// ============================================================
+function approveRequest(id) {
+    if (!confirm('Xác nhận đồng ý yêu cầu này?')) return;
+    AppData.updateRequest(id, { status: 'approved' });
+    loadRequests();
+    showNotification('✅ Đã đồng ý yêu cầu! Bạn có thể tạo nhiệm vụ ngay.', 'success');
+}
+
+function rejectRequest(id) {
+    if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
+    AppData.updateRequest(id, { status: 'rejected' });
+    loadRequests();
+    showNotification('❌ Đã từ chối yêu cầu!', 'warning');
+}
+
+// ============================================================
+// HỦY YÊU CẦU - XÓA CẢ NHIỆM VỤ LIÊN QUAN
+// ============================================================
+function cancelRequest(id) {
+    const request = allRequests.find(r => r.id === id);
+    if (!request) {
+        showNotification('⚠️ Không tìm thấy yêu cầu', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Xác nhận hủy yêu cầu của ${request.name}?\nHành động này sẽ xóa cả nhiệm vụ liên quan (nếu có).`)) return;
+    
+    const missions = AppData.getMissions();
+    const relatedMissions = missions.filter(m => m.requestId === id);
+    
+    // Thông báo cho tình nguyện viên
+    relatedMissions.forEach(m => {
+        if (m.volunteers && m.volunteers.length > 0) {
+            const volunteerNames = m.volunteers.map(v => v.name).join(', ');
+            AppData.addNotification({
+                title: `🗑️ Nhiệm vụ "${m.title}" đã bị hủy`,
+                detail: `Yêu cầu cứu trợ của ${request.name} đã bị hủy. Tình nguyện viên: ${volunteerNames}`,
+                type: 'mission_cancelled'
+            });
+        }
+    });
+    
+    // Cập nhật trạng thái các nhiệm vụ liên quan thành cancelled
+    if (relatedMissions.length > 0) {
+        relatedMissions.forEach(m => {
+            m.status = 'cancelled';
+            m.cancelledAt = new Date().toISOString();
+            m.cancelReason = `Yêu cầu cứu trợ của ${request.name} đã bị hủy`;
+        });
+        AppData.setMissions(missions);
+        console.log(`🗑️ Đã cập nhật ${relatedMissions.length} nhiệm vụ sang trạng thái hủy`);
+    }
+    
+    AppData.updateRequest(id, { 
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        note: 'Yêu cầu đã bị hủy'
+    });
+    
+    showNotification(`🗑️ Đã hủy yêu cầu của ${request.name} và ${relatedMissions.length} nhiệm vụ liên quan`, 'warning');
+    loadRequests();
+}
+
+// ============================================================
+// TẠO NHIỆM VỤ TỪ YÊU CẦU - PHÂN LOẠI NHÀ THEO SỐ NGƯỜI
+// ============================================================
+function createMissionFromRequest(id) {
+    const request = allRequests.find(r => r.id === id);
+    if (!request) {
+        showNotification('⚠️ Không tìm thấy yêu cầu', 'warning');
+        return;
+    }
+    
+    // Kiểm tra đã có nhiệm vụ chưa
+    const existingMissions = AppData.getMissions().filter(m => m.requestId === id && m.status !== 'done' && m.status !== 'cancelled');
+    if (existingMissions.length > 0) {
+        showNotification('⚠️ Yêu cầu này đã có nhiệm vụ! Vui lòng kiểm tra.', 'warning');
+        return;
+    }
+    
+    // Xác định loại nhà dựa trên số người
+    const houseType = getHouseType(request.adults || 0, request.children || 0);
+    
+    // Tìm kho gần nhất
+    const warehouses = AppData.getWarehouses();
+    let nearestWarehouse = null;
+    let minDist = Infinity;
+    
+    if (request.lat && request.lng) {
+        warehouses.forEach(w => {
+            if (w.lat && w.lng) {
+                const dist = Math.sqrt(
+                    Math.pow(request.lat - w.lat, 2) + 
+                    Math.pow(request.lng - w.lng, 2)
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestWarehouse = w;
+                }
+            }
+        });
+    }
+    
+    const warehouse = nearestWarehouse || warehouses[0] || { 
+        name: 'Kho chính', 
+        lat: 16.0544, 
+        lng: 108.2022 
+    };
+    
+    // CHỈ CẤP 1 CĂN NHÀ CHO 1 YÊU CẦU
+    const mission = {
+        requestId: id,
+        title: `🚚 Cấp ${houseType.label} cho ${request.name}`,
+        description: `Cấp 1 căn ${houseType.label} (${houseType.size}m²) cho gia đình ${request.name} tại ${request.xa || ''}, ${request.huyen || ''}`,
+        from: warehouse.name,
+        to: `${request.xa || ''}, ${request.huyen || ''}`,
+        toLat: request.lat || null,
+        toLng: request.lng || null,
+        pickupName: warehouse.name,
+        pickupLat: warehouse.lat || null,
+        pickupLng: warehouse.lng || null,
+        qty: 1,
+        houseSize: houseType.size,
+        houseLabel: houseType.label,
+        requiredVolunteers: Math.max(2, Math.ceil((request.adults || 1) / 2)),
+        priority: request.urgency === 'critical' ? 'high' : 'normal',
+        status: 'pending',
+        volunteers: [],
+        createdAt: new Date().toISOString(),
+        residentInfo: {
+            name: request.name,
+            phone: request.phone,
+            address: request.address || `${request.xa || ''}, ${request.huyen || ''}`,
+            adults: request.adults || 0,
+            children: request.children || 0,
+            totalPeople: request.totalPeople || 0
+        }
+    };
+    
+    AppData.addMission(mission);
+    
+    // Cập nhật yêu cầu
+    AppData.updateRequest(id, { 
+        status: 'processing',
+        missionId: mission.id
+    });
+    
+    // Thông báo cho tình nguyện viên
+    AppData.addNotification({
+        title: `📋 Nhiệm vụ mới: ${mission.title}`,
+        detail: `Cần ${mission.requiredVolunteers} tình nguyện viên để vận chuyển ${houseType.label} cho ${request.name}`,
+        type: 'mission'
+    });
+    
+    showNotification(`📋 Đã tạo nhiệm vụ cấp ${houseType.label} cho ${request.name}`, 'success');
+    loadRequests();
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportRequestsCSV() {
+    if (filteredRequests.length === 0) { showNotification('⚠️ Không có dữ liệu!', 'warning'); return; }
+    const headers = ['Mã', 'Họ tên', 'Địa chỉ', 'SĐT', 'Người lớn', 'Trẻ em', 'Tổng người', 'Loại nhà', 'Mức độ', 'Trạng thái', 'Thời gian'];
+    const rows = filteredRequests.map(r => {
+        const houseType = getHouseType(r.adults || 0, r.children || 0);
+        return [
+            r.code || 'N/A', 
+            r.name, 
+            `${r.xa || ''}, ${r.huyen || ''}`, 
+            r.phone || 'N/A', 
+            r.adults || 0, 
+            r.children || 0, 
+            r.totalPeople || 0,
+            houseType.label,
+            r.urgency, 
+            r.status, 
+            r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : 'N/A'
+        ];
+    });
+    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `yeu_cau_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('✅ Đã xuất CSV!', 'success');
+}
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    const colors = {
+        success: 'bg-emerald-500',
+        error: 'bg-red-500',
+        warning: 'bg-amber-500',
+        info: 'bg-blue-500'
+    };
+    toast.className = `fixed bottom-6 right-6 ${colors[type] || colors.info} text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium z-50 transition-all duration-300 transform translate-y-0 opacity-100`;
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_requests, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_requests, 300);
+    });
+}
+
+// ============================================================
+// EXPOSE
+// ============================================================
+window.init_admin_requests = init_admin_requests;
+window.applyRequestFilters = applyRequestFilters;
+window.resetRequestFilters = resetRequestFilters;
+window.showRequestDetail = showRequestDetail;
+window.closeRequestDetail = closeRequestDetail;
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;
+window.cancelRequest = cancelRequest;
+window.exportRequestsCSV = exportRequestsCSV;
+window.generateSuggestion = generateSuggestion;
+window.showSuggestionDetail = showSuggestionDetail;
+window.closeSuggestionModal = closeSuggestionModal;
+window.createDistributionPlan = createDistributionPlan;
+window.createMissionFromRequest = createMissionFromRequest;
+window.checkRequestHasMission = checkRequestHasMission;
+window.getMissionsByRequestId = getMissionsByRequestId;
+window.getHouseType = getHouseType;
+window.openGoogleMaps = openGoogleMaps;
+</script>

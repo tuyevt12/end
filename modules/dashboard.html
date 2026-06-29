@@ -1,0 +1,474 @@
+<!-- ============================================================ -->
+<!-- MODULE: TỔNG QUAN (DASHBOARD) -->
+<!-- ============================================================ -->
+
+<!-- ===== STATS ROW ===== -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+    <div class="stat-box bg-gradient-to-br from-blue-50 to-white border-l-4 border-blue-500">
+        <div class="value text-blue-600" id="dash-total-requests">0</div>
+        <div class="label">Tổng yêu cầu</div>
+    </div>
+    <div class="stat-box bg-gradient-to-br from-red-50 to-white border-l-4 border-red-500">
+        <div class="value text-red-600" id="dash-pending">0</div>
+        <div class="label">Đang chờ xử lý</div>
+    </div>
+    <div class="stat-box bg-gradient-to-br from-amber-50 to-white border-l-4 border-amber-500">
+        <div class="value text-amber-600" id="dash-processing">0</div>
+        <div class="label">Đang xử lý</div>
+    </div>
+    <div class="stat-box bg-gradient-to-br from-emerald-50 to-white border-l-4 border-emerald-500">
+        <div class="value text-emerald-600" id="dash-completed">0</div>
+        <div class="label">Đã hoàn thành</div>
+    </div>
+    <div class="stat-box bg-gradient-to-br from-purple-50 to-white border-l-4 border-purple-500">
+        <div class="value text-purple-600" id="dash-shelter-stock">0</div>
+        <div class="label">Shelter tồn kho</div>
+    </div>
+    <div class="stat-box bg-gradient-to-br from-teal-50 to-white border-l-4 border-teal-500">
+        <div class="value text-teal-600" id="dash-fulfillment">0%</div>
+        <div class="label">Tỷ lệ đáp ứng</div>
+    </div>
+</div>
+
+<!-- ===== MAP + ALERTS ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="lg:col-span-2">
+        <div class="card p-2">
+            <div class="flex flex-wrap justify-between items-center px-2 pt-1 gap-2">
+                <h4 class="text-sm font-bold text-slate-700">
+                    <i class="fa-solid fa-map text-blue-500 mr-1"></i> Bản đồ tình hình cứu trợ
+                </h4>
+            </div>
+            <div id="map-dashboard" style="height:400px;width:100%;border-radius:8px;background:#e8edf3;"></div>
+            <div class="flex flex-wrap gap-4 mt-2 text-[10px] text-slate-500 px-1">
+                <span><span class="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span> Kho hàng</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Điểm cứu trợ</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-amber-500 mr-1"></span> Điểm tập kết</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Yêu cầu khẩn cấp</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span> Yêu cầu cao</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-purple-500 mr-1"></span> Tuyến vận chuyển</span>
+            </div>
+        </div>
+    </div>
+    <div class="lg:col-span-1 space-y-4">
+        <!-- Cảnh báo -->
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fa-solid fa-bell text-red-500 mr-1"></i> Cảnh báo</h4>
+                <span class="text-[10px] text-slate-400" id="alert-count">0 cảnh báo</span>
+            </div>
+            <div id="alert-list" class="space-y-2 max-h-[200px] overflow-y-auto"></div>
+        </div>
+
+        <!-- Hiệu quả chuỗi cung ứng -->
+        <div class="card bg-gradient-to-br from-slate-50 to-white">
+            <h4 class="text-sm font-bold text-slate-700 mb-2"><i class="fa-solid fa-gauge-high text-blue-500 mr-1"></i> Hiệu quả chuỗi cung ứng</h4>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-white p-2 rounded-lg text-center border border-slate-100">
+                    <p class="text-[10px] text-slate-400">Thời gian đáp ứng TB</p>
+                    <p class="font-bold text-sm text-emerald-600" id="dash-response-time">0h</p>
+                </div>
+                <div class="bg-white p-2 rounded-lg text-center border border-slate-100">
+                    <p class="text-[10px] text-slate-400">Tỷ lệ đáp ứng</p>
+                    <p class="font-bold text-sm text-blue-600" id="dash-fulfillment-rate">0%</p>
+                </div>
+                <div class="bg-white p-2 rounded-lg text-center border border-slate-100">
+                    <p class="text-[10px] text-slate-400">Shelter đã giao</p>
+                    <p class="font-bold text-sm text-purple-600" id="dash-delivered">0</p>
+                </div>
+                <div class="bg-white p-2 rounded-lg text-center border border-slate-100">
+                    <p class="text-[10px] text-slate-400">TNV đang hoạt động</p>
+                    <p class="font-bold text-sm text-amber-600" id="dash-active-volunteers">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CHARTS ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-bar text-blue-500 mr-1"></i> Yêu cầu theo huyện</h4>
+        </div>
+        <div class="chart-container" style="height:220px;">
+            <canvas id="dash-request-chart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-pie text-emerald-500 mr-1"></i> Tồn kho theo kho</h4>
+        </div>
+        <div class="chart-container" style="height:220px;">
+            <canvas id="dash-inventory-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ACTIVITY LOG ===== -->
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-clock-rotate-left text-slate-500 mr-1"></i> Hoạt động gần đây</h4>
+    </div>
+    <div id="activity-log" class="space-y-2 max-h-48 overflow-y-auto"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ============================================================
+// DASHBOARD MODULE - TỔNG QUAN
+// ============================================================
+
+let dashMap = null;
+let dashCharts = {};
+let updateInterval = null;
+
+// ===== DỮ LIỆU =====
+const WAREHOUSE_DATA = [
+    { id: 1, name: "Kho Đà Nẵng", lat: 16.0544, lng: 108.2022, stock: 4400, status: "active" },
+    { id: 2, name: "Kho Huế", lat: 16.4630, lng: 107.5900, stock: 3100, status: "active" },
+    { id: 3, name: "Kho Đồng Hới", lat: 17.4690, lng: 106.5970, stock: 520, status: "warning" },
+    { id: 4, name: "Kho Thanh Hóa", lat: 19.8076, lng: 105.7755, stock: 3200, status: "active" },
+    { id: 5, name: "Kho Vinh", lat: 18.6796, lng: 105.6813, stock: 2800, status: "active" }
+];
+
+const PICKUP_POINTS = [
+    { name: "Điểm tập kết Đà Nẵng", lat: 16.0644, lng: 108.2122, address: "Đà Nẵng" },
+    { name: "Điểm tập kết Huế", lat: 16.4730, lng: 107.6000, address: "TP Huế" },
+    { name: "Điểm tập kết Đồng Hới", lat: 17.4790, lng: 106.6070, address: "Quảng Bình" }
+];
+
+const RELIEF_POINTS = [
+    { name: "Trung tâm cứu trợ Đà Nẵng", lat: 16.0544, lng: 108.2022, stock: 30, address: "Đà Nẵng" },
+    { name: "Chùa Thiên Mụ - Huế", lat: 16.4630, lng: 107.5900, stock: 20, address: "TP Huế" },
+    { name: "UBND huyện Bố Trạch", lat: 17.4800, lng: 106.4500, stock: 10, address: "Quảng Bình" }
+];
+
+// ===== INIT =====
+function initDashboard() {
+    console.log('🚀 Tổng quan: Bắt đầu khởi tạo...');
+    try {
+        updateStats();
+        renderAlerts();
+        initDashMap();
+        initCharts();
+        renderActivityLog();
+        if (updateInterval) clearInterval(updateInterval);
+        updateInterval = setInterval(() => {
+            updateStats();
+            renderAlerts();
+        }, 30000);
+        console.log('✅ Tổng quan: Khởi tạo thành công!');
+    } catch (error) {
+        console.error('❌ Tổng quan error:', error);
+        showNotification('❌ Lỗi khởi tạo Tổng quan', 'error');
+    }
+}
+
+// ===== UPDATE STATS =====
+function updateStats() {
+    const requests = AppData.getRequests();
+    const inventory = AppData.getInventory();
+    const stats = AppData.getStats();
+    
+    const total = requests.length;
+    const pending = requests.filter(r => r.status === 'pending').length;
+    const processing = requests.filter(r => r.status === 'processing' || r.status === 'approved').length;
+    const completed = requests.filter(r => r.status === 'done' || r.status === 'completed').length;
+    
+    const totalStock = inventory.reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const delivered = stats.deliveredShelter || 0;
+    const fulfillmentRate = total > 0 ? Math.round((delivered / (total * 2)) * 100) : 0;
+    const responseTime = stats.responseTime || 18.6;
+    const activeVolunteers = stats.activeVolunteers || 0;
+    
+    document.getElementById('dash-total-requests').textContent = total;
+    document.getElementById('dash-pending').textContent = pending;
+    document.getElementById('dash-processing').textContent = processing;
+    document.getElementById('dash-completed').textContent = completed;
+    document.getElementById('dash-shelter-stock').textContent = totalStock.toLocaleString();
+    document.getElementById('dash-fulfillment').textContent = Math.min(100, fulfillmentRate) + '%';
+    document.getElementById('dash-response-time').textContent = responseTime + 'h';
+    document.getElementById('dash-fulfillment-rate').textContent = Math.min(100, fulfillmentRate) + '%';
+    document.getElementById('dash-delivered').textContent = delivered.toLocaleString();
+    document.getElementById('dash-active-volunteers').textContent = activeVolunteers;
+}
+
+// ===== ALERTS =====
+function renderAlerts() {
+    const container = document.getElementById('alert-list');
+    if (!container) return;
+    
+    const requests = AppData.getRequests();
+    const alerts = [];
+    
+    const criticalRequests = requests.filter(r => r.urgency === 'critical' && r.status === 'pending');
+    criticalRequests.forEach(r => {
+        alerts.push({
+            id: 'alert_req_' + r.id,
+            message: `🔴 Yêu cầu khẩn cấp: ${r.name}`,
+            detail: `${r.xa || ''}, ${r.huyen || ''} - Cần ${r.shelterNeed || 0} bộ`,
+            type: 'danger',
+            time: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : 'Vừa xong',
+            read: false
+        });
+    });
+    
+    const highRequests = requests.filter(r => r.urgency === 'high' && r.status === 'pending');
+    highRequests.forEach(r => {
+        alerts.push({
+            id: 'alert_high_' + r.id,
+            message: `🟠 Yêu cầu cao: ${r.name}`,
+            detail: `${r.xa || ''}, ${r.huyen || ''} - Cần ${r.shelterNeed || 0} bộ`,
+            type: 'warning',
+            time: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : 'Vừa xong',
+            read: false
+        });
+    });
+    
+    const unread = alerts.filter(a => !a.read).length;
+    document.getElementById('alert-count').textContent = `${unread} cảnh báo`;
+    
+    if (alerts.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 text-center py-2">Không có cảnh báo nào.</div>';
+        return;
+    }
+    
+    container.innerHTML = alerts.map(a => `
+        <div class="p-2.5 rounded-lg border-l-4 ${a.type === 'danger' ? 'border-red-500 bg-red-50' : 'border-amber-500 bg-amber-50'} cursor-pointer hover:shadow-md transition-all"
+             onclick="markAlertRead('${a.id}')">
+            <div class="flex justify-between items-start">
+                <p class="font-bold text-xs text-slate-800 flex-1">${a.message}</p>
+                ${!a.read ? '<span class="text-[8px] text-red-500 font-bold">MỚI</span>' : ''}
+            </div>
+            <p class="text-[10px] text-slate-500">${a.detail}</p>
+            <p class="text-[8px] text-slate-400 mt-0.5">⏰ ${a.time}</p>
+        </div>
+    `).join('');
+}
+
+function markAlertRead(id) {
+    showNotification('✅ Đã đánh dấu đã đọc', 'success');
+}
+
+// ===== MAP =====
+function initDashMap() {
+    const container = document.getElementById('map-dashboard');
+    if (!container) return;
+    if (dashMap) { dashMap.invalidateSize(); return; }
+    if (typeof L === 'undefined') { setTimeout(initDashMap, 500); return; }
+    
+    try {
+        dashMap = L.map('map-dashboard', {
+            center: [16.5, 107.5],
+            zoom: 7,
+            zoomControl: true
+        });
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap & CARTO',
+            maxZoom: 20
+        }).addTo(dashMap);
+        
+        // KHO HÀNG
+        WAREHOUSE_DATA.forEach(w => {
+            const color = w.status === 'active' ? '#3b82f6' : '#f59e0b';
+            const marker = L.marker([w.lat, w.lng], {
+                icon: L.divIcon({
+                    className: 'warehouse-marker',
+                    html: `<div style="background:${color};width:32px;height:32px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                            <i class="fa-solid fa-warehouse" style="color:white;font-size:14px;"></i>
+                          </div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
+            }).addTo(dashMap);
+            marker.bindPopup(`<b>🏢 ${w.name}</b><br>📍 ${w.district || ''}<br>📦 ${w.stock.toLocaleString()} bộ`);
+        });
+        
+        // ĐIỂM CỨU TRỢ
+        RELIEF_POINTS.forEach(p => {
+            const marker = L.marker([p.lat, p.lng], {
+                icon: L.divIcon({
+                    className: 'relief-marker',
+                    html: `<div style="background:#22c55e;width:30px;height:30px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,0.3);">
+                            <i class="fa-solid fa-hand-holding-heart" style="color:white;font-size:13px;"></i>
+                          </div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(dashMap);
+            marker.bindPopup(`<b>🏥 ${p.name}</b><br>📍 ${p.address || ''}<br>📦 Còn ${p.stock} bộ`);
+        });
+        
+        // ĐIỂM TẬP KẾT
+        PICKUP_POINTS.forEach(p => {
+            const marker = L.marker([p.lat, p.lng], {
+                icon: L.divIcon({
+                    className: 'pickup-marker',
+                    html: `<div style="background:#f59e0b;width:30px;height:30px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(245,158,11,0.3);">
+                            <i class="fa-solid fa-box" style="color:white;font-size:13px;"></i>
+                          </div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(dashMap);
+            marker.bindPopup(`<b>📦 Điểm tập kết</b><br>📍 ${p.address || ''}`);
+        });
+        
+        // YÊU CẦU CỨU TRỢ
+        const requests = AppData.getRequests();
+        requests.slice(0, 5).forEach(r => {
+            if (r.lat && r.lng) {
+                const color = r.urgency === 'critical' ? '#ef4444' : r.urgency === 'high' ? '#f59e0b' : '#22c55e';
+                const label = r.urgency === 'critical' ? '🔴' : r.urgency === 'high' ? '🟠' : '🟢';
+                const marker = L.marker([r.lat, r.lng], {
+                    icon: L.divIcon({
+                        className: 'request-marker',
+                        html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                                ${label}
+                              </div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).addTo(dashMap);
+                marker.bindPopup(`<b>📍 ${r.name}</b><br>⚠️ Mức độ: ${r.urgency}<br>📦 Cần ${r.shelterNeed || 0} bộ`);
+            }
+        });
+        
+        // TUYẾN VẬN CHUYỂN
+        const routes = [
+            { from: [16.0544, 108.2022], to: [15.9130, 108.2215], label: "Đà Nẵng → Quảng Nam" },
+            { from: [16.4630, 107.5900], to: [16.7450, 107.1850], label: "Huế → Quảng Trị" }
+        ];
+        routes.forEach(route => {
+            const polyline = L.polyline([route.from, route.to], {
+                color: '#8b5cf6',
+                weight: 2,
+                opacity: 0.6,
+                dashArray: '5,5'
+            }).addTo(dashMap);
+            polyline.bindPopup(`🚚 Tuyến vận chuyển<br>${route.label}`);
+        });
+        
+        setTimeout(() => dashMap.invalidateSize(), 400);
+        console.log('✅ Tổng quan map ready!');
+    } catch (error) {
+        console.error('❌ Map error:', error);
+    }
+}
+
+// ===== CHARTS =====
+function initCharts() {
+    try {
+        const ctx1 = document.getElementById('dash-request-chart');
+        if (ctx1) {
+            if (dashCharts.requests) dashCharts.requests.destroy();
+            dashCharts.requests = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Điện Bàn', 'Phú Vang', 'Bố Trạch', 'Hòa Vang', 'Nghi Xuân'],
+                    datasets: [{
+                        label: 'Số yêu cầu',
+                        data: [12, 8, 15, 6, 9],
+                        backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ef4444'],
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+        
+        const ctx2 = document.getElementById('dash-inventory-chart');
+        if (ctx2) {
+            if (dashCharts.inventory) dashCharts.inventory.destroy();
+            dashCharts.inventory = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Kho Đà Nẵng', 'Kho Huế', 'Kho Đồng Hới', 'Kho Thanh Hóa', 'Kho Vinh'],
+                    datasets: [{
+                        data: [4400, 3100, 520, 3200, 2800],
+                        backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 8, font: { size: 10 } }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+        console.log('✅ Charts initialized');
+    } catch (error) {
+        console.error('❌ Charts error:', error);
+    }
+}
+
+// ===== ACTIVITY LOG =====
+function renderActivityLog() {
+    const container = document.getElementById('activity-log');
+    if (!container) return;
+    const signals = AppData.getSignals();
+    if (signals.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 text-center py-2">Chưa có hoạt động nào.</div>';
+        return;
+    }
+    container.innerHTML = signals.slice(0, 10).map(s => `
+        <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100">
+            <span class="text-slate-700">${s.message}</span>
+            <span class="text-slate-400">${s.time || 'Vừa xong'}</span>
+        </div>
+    `).join('');
+}
+
+// ===== TOAST =====
+function showNotification(message, type = 'info') {
+    const types = { info: 'toast-info', success: 'toast-success', warning: 'toast-warning', error: 'toast-error' };
+    const toast = document.createElement('div');
+    toast.className = `toast ${types[type] || types.info}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.className = 'toast toast-fade-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ===== CLEANUP =====
+window.addEventListener('beforeunload', function() {
+    if (updateInterval) clearInterval(updateInterval);
+    if (dashMap) { dashMap.remove(); dashMap = null; }
+    Object.keys(dashCharts).forEach(key => {
+        if (dashCharts[key]) { dashCharts[key].destroy(); dashCharts[key] = null; }
+    });
+});
+
+// ===== AUTO INIT =====
+if (document.readyState === 'complete') {
+    setTimeout(initDashboard, 500);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initDashboard, 500);
+    });
+}
+
+window.initDashboard = initDashboard;
+window.markAlertRead = markAlertRead;
+console.log('✅ Tổng quan module loaded');
+</script>

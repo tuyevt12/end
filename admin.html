@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HLMS - Hệ thống quản lý logistics nhân đạo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: #0f172a;
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            z-index: 999;
+            transition: transform 0.3s ease;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        .sidebar-logo {
+            padding: 20px 24px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .sidebar-logo h1 {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .sidebar-logo h1 span { color: #3b82f6; }
+        .sidebar-logo p {
+            color: #94a3b8;
+            font-size: 10px;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-section-title {
+            padding: 16px 24px 8px;
+            color: #475569;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .sidebar-item {
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            text-decoration: none;
+        }
+        .sidebar-item:hover { background: #1e293b; color: #f1f5f9; }
+        .sidebar-item.active { background: #1e293b; color: #f1f5f9; border-left-color: #3b82f6; }
+        .sidebar-item i { width: 20px; text-align: center; font-size: 14px; }
+        .sidebar-item .badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 9px;
+            padding: 1px 8px;
+            border-radius: 12px;
+        }
+        .sidebar-item .badge-green { background: #22c55e; }
+        .sidebar-item .badge-amber { background: #f59e0b; }
+
+        /* ===== MAIN ===== */
+        .main-content {
+            margin-left: 260px;
+            padding: 20px 28px;
+            min-height: 100vh;
+        }
+
+        /* ===== CARD ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9edf2;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .card-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* ===== STAT BOX ===== */
+        .stat-box {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 12px 16px;
+            border: 1px solid #e9edf2;
+        }
+        .stat-box .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .stat-box .label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== BADGE ===== */
+        .badge-status {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-active { background: #dbeafe; color: #1e40af; }
+        .badge-done { background: #d1fae5; color: #065f46; }
+
+        /* ===== TABLE ===== */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table th { background: #f8fafc; color: #475569; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e9edf2; }
+        table td { padding: 10px 12px; border-bottom: 1px solid #e9edf2; color: #1e293b; }
+        table tr:hover td { background: #f8fafc; }
+
+        /* ===== NAV ===== */
+        .nav-switch { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .nav-btn {
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-btn-admin { background: #3b82f6; color: white; }
+        .nav-btn-admin:hover { background: #2563eb; }
+        .nav-btn-logout { background: #ef4444; color: white; }
+        .nav-btn-logout:hover { background: #dc2626; }
+        .nav-btn-refresh { background: #e2e8f0; color: #475569; }
+        .nav-btn-refresh:hover { background: #cbd5e1; }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+        }
+        .toast-info { background: #3b82f6; }
+        .toast-success { background: #22c55e; }
+        .toast-warning { background: #f59e0b; }
+        .toast-error { background: #ef4444; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-fade-out { opacity: 0; transform: translateY(20px); transition: 0.3s; }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 16px; }
+            .nav-switch { flex-wrap: wrap; justify-content: center; }
+            .sidebar-item { font-size: 11px; padding: 8px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <h1>HLMS <span>Connect</span></h1>
+            <p>Humanitarian Logistics Management</p>
+        </div>
+
+        <!-- Điều hành -->
+        <div class="sidebar-section-title">Điều hành</div>
+        <div class="sidebar-item active" data-page="dashboard" onclick="loadModule('dashboard')">
+            <i class="fa-solid fa-house"></i> Tổng quan
+        </div>
+
+        <!-- Quản lý -->
+        <div class="sidebar-section-title">Quản lý</div>
+        <div class="sidebar-item" data-page="requests" onclick="loadModule('requests')">
+            <i class="fa-regular fa-list"></i> Yêu cầu cứu trợ
+            <span class="badge" id="sidebar-req-badge">0</span>
+        </div>
+        <div class="sidebar-item" data-page="community-reports" onclick="loadModule('community-reports')">
+            <i class="fa-regular fa-flag"></i> Báo cáo cộng đồng
+        </div>
+        <div class="sidebar-item" data-page="missions" onclick="loadModule('missions')">
+            <i class="fa-solid fa-tasks"></i> Quản lý nhiệm vụ
+            <span class="badge badge-amber" id="sidebar-mission-badge">0</span>
+        </div>
+        <div class="sidebar-item" data-page="volunteers" onclick="loadModule('volunteers')">
+            <i class="fa-regular fa-handshake"></i> Tình nguyện viên
+        </div>
+        <div class="sidebar-item" data-page="warehouse-position" onclick="loadModule('warehouse-position')">
+            <i class="fa-solid fa-location-dot"></i> Quy hoạch kho
+        </div>
+        <div class="sidebar-item" data-page="inventory" onclick="loadModule('inventory')">
+            <i class="fa-solid fa-boxes"></i> Quản lý tồn kho
+            <span class="badge badge-red" id="sidebar-inv-badge">0</span>
+        </div>
+        <div class="sidebar-item" data-page="suppliers" onclick="loadModule('suppliers')">
+            <i class="fa-solid fa-handshake"></i> Nhà cung cấp
+        </div>
+        <div class="sidebar-item" data-page="multi-source" onclick="loadModule('multi-source')">
+            <i class="fa-solid fa-link"></i> Điều phối đa nguồn
+        </div>
+        <div class="sidebar-item" data-page="distribution" onclick="loadModule('distribution')">
+            <i class="fa-solid fa-truck"></i> Điều phối cứu trợ
+        </div>
+
+        <!-- Phân tích -->
+        <div class="sidebar-section-title">Phân tích</div>
+        <div class="sidebar-item" data-page="simulation" onclick="loadModule('simulation')">
+            <i class="fa-solid fa-cloud-bolt"></i> Mô phỏng thiên tai
+        </div>
+        <div class="sidebar-item" data-page="reports" onclick="loadModule('reports')">
+            <i class="fa-solid fa-chart-pie"></i> Báo cáo & Thống kê
+        </div>
+
+        <!-- Hệ thống -->
+        <div class="sidebar-section-title">Hệ thống</div>
+        <div class="sidebar-item" data-page="settings" onclick="loadModule('settings')">
+            <i class="fa-solid fa-gear"></i> Cấu hình
+        </div>
+        <div class="sidebar-item" data-page="help" onclick="loadModule('help')">
+            <i class="fa-regular fa-circle-question"></i> Hướng dẫn
+        </div>
+    </nav>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main-content">
+        <header class="flex flex-wrap justify-between items-center mb-5 bg-white p-4 rounded-xl shadow-sm border border-slate-200/60">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800" id="pageTitle">📊 Tổng quan</h2>
+                <p class="text-xs text-slate-500">Cập nhật: <span id="update-time">--:--</span></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="nav-switch">
+                    <button onclick="refreshModule()" class="nav-btn nav-btn-refresh">
+                        <i class="fa-solid fa-rotate"></i> Làm mới
+                    </button>
+                    <button onclick="handleLogout()" class="nav-btn nav-btn-logout">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MODULE CONTAINER -->
+        <div id="module-container">
+            <div class="text-center py-20 text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 block"></i>
+                <p class="text-sm">Đang tải hệ thống...</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/admin-data-utils.js"></script>
+    <script src="js/map-layer-control.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ============================================================
+        // MODULE CONFIG
+        // ============================================================
+        const ADMIN_MODULES = {
+            'dashboard': { title: '📊 Tổng quan', file: 'modules/dashboard.html' },
+            'requests': { title: '📋 Yêu cầu cứu trợ', file: 'modules/requests.html' },
+            'community-reports': { title: '📌 Báo cáo cộng đồng', file: 'modules/community-reports.html' },
+            'missions': { title: '📋 Quản lý nhiệm vụ', file: 'modules/missions.html' },
+            'volunteers': { title: '🧑‍🤝‍🧑 Tình nguyện viên', file: 'modules/volunteers.html' },
+            'warehouse-position': { title: '📍 Quy hoạch kho', file: 'modules/warehouse-position.html' },
+            'inventory': { title: '📦 Quản lý tồn kho', file: 'modules/inventory.html' },
+            'suppliers': { title: '🤝 Nhà cung cấp', file: 'modules/suppliers.html' },
+            'multi-source': { title: '🔄 Điều phối đa nguồn', file: 'modules/multi-source.html' },
+            'distribution': { title: '🚚 Điều phối cứu trợ', file: 'modules/distribution.html' },
+            'simulation': { title: '🌩️ Mô phỏng thiên tai', file: 'modules/simulation.html' },
+            'reports': { title: '📊 Báo cáo & Thống kê', file: 'modules/reports.html' },
+            'settings': { title: '⚙️ Cấu hình', file: 'modules/settings.html' },
+            'help': { title: '❓ Hướng dẫn', file: 'modules/help.html' }
+        };
+
+        let currentModule = 'dashboard';
+        let moduleCache = {};
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showNotification(message, type = 'info') {
+            const types = { info: 'toast-info', success: 'toast-success', warning: 'toast-warning', error: 'toast-error' };
+            const toast = document.createElement('div');
+            toast.className = `toast ${types[type] || types.info}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.className = 'toast toast-fade-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        window.showNotification = showNotification;
+
+        // ============================================================
+        // UPDATE BADGES
+        // ============================================================
+        function updateBadges() {
+            // Request badge
+            const requests = AppData.getRequests();
+            const pendingRequests = requests.filter(r => r.status === 'pending').length;
+            const reqBadge = document.getElementById('sidebar-req-badge');
+            if (reqBadge) {
+                reqBadge.textContent = pendingRequests;
+                reqBadge.style.display = pendingRequests > 0 ? 'inline-block' : 'none';
+            }
+
+            // Mission badge
+            const missions = AppData.getMissions();
+            const pendingMissions = missions.filter(m => m.status === 'pending' || m.status === 'active').length;
+            const missionBadge = document.getElementById('sidebar-mission-badge');
+            if (missionBadge) {
+                missionBadge.textContent = pendingMissions;
+                missionBadge.style.display = pendingMissions > 0 ? 'inline-block' : 'none';
+            }
+
+            // Inventory badge - low stock
+            const inventory = AppData.getInventory();
+            const lowStock = inventory.filter(i => {
+                const min = i.min || 20;
+                return i.quantity < min;
+            }).length;
+            const invBadge = document.getElementById('sidebar-inv-badge');
+            if (invBadge) {
+                invBadge.textContent = lowStock;
+                invBadge.style.display = lowStock > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // ============================================================
+        // LOAD MODULE
+        // ============================================================
+        function loadModule(moduleId) {
+            if (!ADMIN_MODULES[moduleId]) {
+                showNotification('Module không tồn tại!', 'error');
+                return;
+            }
+
+            currentModule = moduleId;
+            const module = ADMIN_MODULES[moduleId];
+
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === moduleId) item.classList.add('active');
+            });
+
+            document.getElementById('pageTitle').textContent = module.title;
+            document.getElementById('sidebar').classList.remove('open');
+
+            const container = document.getElementById('module-container');
+
+            if (moduleCache[moduleId]) {
+                container.innerHTML = moduleCache[moduleId];
+                executeModuleScripts(moduleId);
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="text-center py-20 text-slate-400">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 block"></i>
+                    <p class="text-sm">Đang tải...</p>
+                </div>
+            `;
+
+            fetch(module.file)
+                .then(response => {
+                    if (!response.ok) throw new Error('Module not found');
+                    return response.text();
+                })
+                .then(html => {
+                    moduleCache[moduleId] = html;
+                    container.innerHTML = html;
+                    executeModuleScripts(moduleId);
+                })
+                .catch(error => {
+                    console.error('Error loading module:', error);
+                    container.innerHTML = `
+                        <div class="card">
+                            <div class="text-center py-10 text-slate-500">
+                                <i class="fa-solid fa-circle-exclamation text-3xl mb-2 block text-red-500"></i>
+                                <p class="text-sm">Không thể tải module. Vui lòng thử lại.</p>
+                                <button onclick="loadModule('${moduleId}')" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                                    <i class="fa-solid fa-rotate"></i> Thử lại
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        // ============================================================
+        // EXECUTE MODULE SCRIPTS
+        // ============================================================
+        function executeModuleScripts(moduleId) {
+            const container = document.getElementById('module-container');
+            const scripts = container.querySelectorAll('script');
+
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                if (oldScript.src) {
+                    newScript.src = oldScript.src;
+                } else {
+                    newScript.textContent = oldScript.textContent;
+                }
+                document.body.appendChild(newScript);
+                oldScript.remove();
+            });
+
+            setTimeout(() => {
+                const initMap = {
+                    'dashboard': 'initDashboard',
+                    'requests': 'init_admin_requests',
+                    'community-reports': 'init_admin_community_reports',
+                    'missions': 'init_admin_missions',
+                    'volunteers': 'init_admin_volunteers',
+                    'warehouse-position': 'init_admin_warehouse_position',
+                    'inventory': 'init_admin_inventory',
+                    'suppliers': 'init_admin_suppliers',
+                    'multi-source': 'init_admin_multi_source',
+                    'distribution': 'init_admin_distribution',
+                    'simulation': 'init_admin_simulation',
+                    'reports': 'init_admin_reports',
+                    'settings': 'init_admin_settings',
+                    'help': 'init_admin_help'
+                };
+                const funcName = initMap[moduleId];
+                if (funcName && window[funcName]) {
+                    try { window[funcName](); } catch(e) { console.error('Init error:', e); }
+                }
+            }, 300);
+
+            document.getElementById('update-time').textContent = getCurrentTime();
+            updateBadges();
+        }
+
+        // ============================================================
+        // REFRESH MODULE
+        // ============================================================
+        function refreshModule() {
+            delete moduleCache[currentModule];
+            loadModule(currentModule);
+            showNotification('🔄 Đã làm mới dữ liệu', 'success');
+        }
+
+        // ============================================================
+        // UTILITY
+        // ============================================================
+        function getCurrentTime() {
+            return new Date().toLocaleString('vi-VN');
+        }
+
+        // ============================================================
+        // LOGOUT
+        // ============================================================
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                showNotification('⏳ Đang đăng xuất...', 'info');
+                setTimeout(function() {
+                    AppData.logout();
+                }, 500);
+            }
+        }
+
+        // ============================================================
+        // CHECK LOGIN
+        // ============================================================
+        function checkLoginStatus() {
+            const user = AppData.getUser();
+            if (!user || user.role !== 'government') {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // ============================================================
+        // DATA CHANGE LISTENER
+        // ============================================================
+        window.addEventListener('dataChanged', function(e) {
+            console.log('🔄 Data changed:', e.detail.key);
+            updateBadges();
+            
+            // Nếu module hiện tại là dashboard, refresh
+            if (currentModule === 'dashboard' && window.initDashboard) {
+                // Dashboard tự refresh khi có thay đổi
+            }
+        });
+
+        // ============================================================
+        // KEYBOARD SHORTCUTS
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                refreshModule();
+            }
+        });
+
+        // ============================================================
+        // SIDEBAR TOGGLE MOBILE
+        // ============================================================
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth <= 768 && sidebar) {
+                const isClickInside = sidebar.contains(e.target);
+                const isHamburger = e.target.closest('.hamburger-menu');
+                if (!isClickInside && !isHamburger) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkLoginStatus()) return;
+
+            const savedModule = localStorage.getItem('hlms_admin_module') || 'dashboard';
+            loadModule(savedModule);
+
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    localStorage.setItem('hlms_admin_module', this.dataset.page);
+                });
+            });
+
+            // Update time every 30s
+            setInterval(() => {
+                document.getElementById('update-time').textContent = getCurrentTime();
+                updateBadges();
+            }, 30000);
+
+            // Update badges on load
+            setTimeout(updateBadges, 500);
+        });
+
+        // ============================================================
+        // EXPOSE
+        // ============================================================
+        window.loadModule = loadModule;
+        window.refreshModule = refreshModule;
+        window.handleLogout = handleLogout;
+        window.showNotification = showNotification;
+        window.getCurrentTime = getCurrentTime;
+        window.updateBadges = updateBadges;
+
+        console.log('✅ HLMS Admin loaded!');
+        console.log('📋 Modules:', Object.keys(ADMIN_MODULES));
+    </script>
+</body>
+</html>

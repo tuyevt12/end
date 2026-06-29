@@ -1,0 +1,210 @@
+<!-- ============================================================ -->
+<!-- MODULE: NHÀ CUNG CẤP -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-purple-600" id="sup-total">0</div>
+        <div class="label">Tổng nhà cung cấp</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="sup-active">0</div>
+        <div class="label">Đang hoạt động</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="sup-inactive">0</div>
+        <div class="label">Dự phòng</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-blue-600" id="sup-capacity">0</div>
+        <div class="label">Tổng công suất</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-handshake text-purple-500 mr-1"></i> Danh sách nhà cung cấp</h4>
+        <button onclick="showAddSupplierModal()" class="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-700 transition">
+            <i class="fa-solid fa-plus"></i> Thêm
+        </button>
+    </div>
+    <div id="suppliers-list" class="space-y-3"></div>
+</div>
+
+<!-- Modal thêm -->
+<div id="addSupplierModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4">Thêm nhà cung cấp</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Tên</label>
+                <input type="text" id="newSupName" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập tên..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số điện thoại</label>
+                <input type="text" id="newSupPhone" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số điện thoại..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Công suất (bộ)</label>
+                <input type="number" id="newSupCapacity" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập công suất..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Lead Time (giờ)</label>
+                <input type="number" id="newSupLeadTime" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Thời gian giao hàng..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Trạng thái</label>
+                <select id="newSupStatus" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="active">🟢 Đang hoạt động</option>
+                    <option value="inactive">🟡 Dự phòng</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="addSupplier()" class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition">Thêm</button>
+            <button onclick="closeAddSupplierModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let SUPPLIERS_DATA = [];
+
+function init_admin_suppliers() {
+    console.log('🤝 Khởi tạo module Nhà cung cấp...');
+    loadSuppliers();
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === AppData.KEYS.SUPPLIERS) loadSuppliers();
+    });
+}
+
+function loadSuppliers() {
+    SUPPLIERS_DATA = AppData.getSuppliers();
+    if (SUPPLIERS_DATA.length === 0) {
+        SUPPLIERS_DATA = [
+            { id: 'sup_1', name: 'Công ty TNHH Cứu trợ Miền Trung', phone: '0912 345 678', capacity: 1500, leadTime: 24, status: 'active' },
+            { id: 'sup_2', name: 'Tổng công ty Vật tư - Hậu cần', phone: '0913 456 789', capacity: 1200, leadTime: 36, status: 'active' },
+            { id: 'sup_3', name: 'Công ty Cổ phần Thiết bị Cứu hộ', phone: '0914 567 890', capacity: 800, leadTime: 48, status: 'inactive' }
+        ];
+        AppData.setSuppliers(SUPPLIERS_DATA);
+    }
+    renderSuppliers();
+    updateSupplierStats();
+}
+
+function updateSupplierStats() {
+    const total = SUPPLIERS_DATA.length;
+    const active = SUPPLIERS_DATA.filter(s => s.status === 'active').length;
+    const inactive = SUPPLIERS_DATA.filter(s => s.status === 'inactive').length;
+    const capacity = SUPPLIERS_DATA.reduce((sum, s) => sum + (s.capacity || 0), 0);
+    
+    document.getElementById('sup-total').textContent = total;
+    document.getElementById('sup-active').textContent = active;
+    document.getElementById('sup-inactive').textContent = inactive;
+    document.getElementById('sup-capacity').textContent = capacity.toLocaleString();
+}
+
+function renderSuppliers() {
+    const container = document.getElementById('suppliers-list');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (SUPPLIERS_DATA.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-slate-400 text-sm">Chưa có nhà cung cấp</div>';
+        return;
+    }
+    
+    SUPPLIERS_DATA.forEach(s => {
+        const statusBadge = s.status === 'active' ? 'badge-success' : 'badge-warning';
+        const statusText = s.status === 'active' ? '🟢 Đang hoạt động' : '🟡 Dự phòng';
+        
+        const div = document.createElement('div');
+        div.className = 'p-3 border rounded-lg flex justify-between items-start hover:bg-slate-50 transition';
+        div.innerHTML = `
+            <div>
+                <p class="font-semibold text-slate-800">${s.name}</p>
+                <p class="text-xs text-slate-500">📞 ${s.phone || 'N/A'} | ⏱️ ${s.leadTime || 'N/A'}h</p>
+                <p class="text-xs text-slate-500">📦 Công suất: ${(s.capacity || 0).toLocaleString()} bộ</p>
+            </div>
+            <div class="text-right">
+                <span class="badge-status ${statusBadge}">${statusText}</span>
+                <div class="mt-1">
+                    <button onclick="toggleSupplierStatus('${s.id}')" class="text-blue-500 hover:text-blue-700 text-xs mr-2">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <button onclick="deleteSupplier('${s.id}')" class="text-red-500 hover:text-red-700 text-xs">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function showAddSupplierModal() {
+    document.getElementById('addSupplierModal').classList.remove('hidden');
+    document.getElementById('newSupName').value = '';
+    document.getElementById('newSupPhone').value = '';
+    document.getElementById('newSupCapacity').value = '';
+    document.getElementById('newSupLeadTime').value = '';
+}
+
+function closeAddSupplierModal() {
+    document.getElementById('addSupplierModal').classList.add('hidden');
+}
+
+function addSupplier() {
+    const name = document.getElementById('newSupName').value.trim();
+    const phone = document.getElementById('newSupPhone').value.trim();
+    const capacity = parseInt(document.getElementById('newSupCapacity').value);
+    const leadTime = parseInt(document.getElementById('newSupLeadTime').value) || 24;
+    const status = document.getElementById('newSupStatus').value;
+    
+    if (!name || !capacity) {
+        showNotification('Vui lòng nhập tên và công suất!', 'error');
+        return;
+    }
+    
+    AppData.addSupplier({ name, phone: phone || 'N/A', capacity, leadTime, status });
+    SUPPLIERS_DATA = AppData.getSuppliers();
+    renderSuppliers();
+    updateSupplierStats();
+    closeAddSupplierModal();
+    showNotification('✅ Đã thêm nhà cung cấp thành công!', 'success');
+}
+
+function toggleSupplierStatus(id) {
+    const supplier = SUPPLIERS_DATA.find(s => s.id === id);
+    if (!supplier) return;
+    supplier.status = supplier.status === 'active' ? 'inactive' : 'active';
+    AppData.setSuppliers(SUPPLIERS_DATA);
+    renderSuppliers();
+    updateSupplierStats();
+    showNotification(`🔄 Đã cập nhật trạng thái: ${supplier.status}`, 'info');
+}
+
+function deleteSupplier(id) {
+    if (!confirm('Bạn có chắc muốn xóa nhà cung cấp này?')) return;
+    SUPPLIERS_DATA = SUPPLIERS_DATA.filter(s => s.id !== id);
+    AppData.setSuppliers(SUPPLIERS_DATA);
+    renderSuppliers();
+    updateSupplierStats();
+    showNotification('🗑️ Đã xóa nhà cung cấp', 'warning');
+}
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_suppliers, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_suppliers, 300);
+    });
+}
+
+window.init_admin_suppliers = init_admin_suppliers;
+window.showAddSupplierModal = showAddSupplierModal;
+window.closeAddSupplierModal = closeAddSupplierModal;
+window.addSupplier = addSupplier;
+window.toggleSupplierStatus = toggleSupplierStatus;
+window.deleteSupplier = deleteSupplier;
+</script>

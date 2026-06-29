@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HLMS - Cổng thông tin người dân</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/location-data.js"></script>
+    <script src="js/admin-data-utils.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .resident-content { padding: 24px 32px; min-height: 100vh; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e9edf2; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+        .card-header h4 { font-size: 14px; font-weight: 700; color: #0f172a; }
+
+        #map-resident { height: 300px; width: 100%; border-radius: 12px; z-index: 1; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 13px; outline: none; transition: 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-group select { background: white; cursor: pointer; }
+
+        .btn-primary { padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.3s; width: 100%; }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.3); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+        .btn-confirm { padding: 8px 20px; background: #22c55e; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-confirm:hover { background: #16a34a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(34,197,94,0.3); }
+        .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .btn-confirm.confirmed { background: #3b82f6; }
+        .btn-confirm.confirmed:hover { background: #2563eb; }
+
+        .btn-danger { padding: 6px 14px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-gps { padding: 8px 16px; background: #22c55e; color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-gps:hover { background: #16a34a; }
+        .btn-gps.loading { opacity: 0.7; pointer-events: none; }
+
+        .btn-receive {
+            padding: 4px 12px;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-receive:hover { background: #7c3aed; }
+        .btn-receive.received { background: #22c55e; cursor: default; }
+        .btn-receive.received:hover { background: #22c55e; }
+
+        .gps-status { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .gps-active { background: #dcfce7; color: #166534; }
+        .gps-loading { background: #fef3c7; color: #92400e; }
+        .gps-inactive { background: #fee2e2; color: #991b1b; }
+
+        .required-note {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .required-note .highlight { color: #fca5a5; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+        }
+        .toast-success { background: #22c55e; }
+        .toast-error { background: #ef4444; }
+        .toast-warning { background: #f59e0b; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .toast-fade-out { opacity: 0; transform: translateY(20px); transition: 0.3s; }
+
+        .nav-switch { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .nav-btn { padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; }
+        .nav-btn-logout { background: #ef4444; color: white; }
+        .nav-btn-logout:hover { background: #dc2626; }
+
+        .request-code { background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 16px 20px; text-align: center; margin-top: 16px; display: none; }
+        .request-code .code { font-size: 28px; font-weight: 800; color: #166534; font-family: monospace; letter-spacing: 2px; }
+
+        .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .checkbox-item:hover { background: #eef2ff; }
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+        .checkbox-item label { font-size: 13px; color: #1e293b; cursor: pointer; }
+
+        .request-item {
+            padding: 12px 14px;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+        .request-item:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .request-item .status-badge { font-size: 10px; font-weight: 600; padding: 2px 10px; border-radius: 12px; }
+        .request-item .status-pending { background: #fef3c7; color: #92400e; }
+        .request-item .status-processing { background: #dbeafe; color: #1e40af; }
+        .request-item .status-approved { background: #d1fae5; color: #065f46; }
+        .request-item .status-done { background: #d1fae5; color: #065f46; }
+        .request-item .status-rejected { background: #fee2e2; color: #991b1b; }
+        .request-item .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+        .request-item.rejected {
+            opacity: 0.8;
+            border-color: #fca5a5;
+            background: #fef2f2;
+        }
+        .request-item.approved {
+            border-color: #86efac;
+            background: #f0fdf4;
+        }
+
+        .relief-item {
+            padding: 10px 14px;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .relief-item:hover { border-color: #22c55e; background: #f0fdf4; }
+        .relief-item .distance { font-size: 11px; font-weight: 600; color: #22c55e; }
+
+        .address-display {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #1e293b;
+            margin-top: 6px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .address-display .label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .scrollable-list { max-height: 300px; overflow-y: auto; }
+        .scrollable-list::-webkit-scrollbar { width: 4px; }
+        .scrollable-list::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .scrollable-list::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+        .empty-state { text-align: center; padding: 30px 0; color: #94a3b8; }
+        .empty-state i { font-size: 32px; display: block; margin-bottom: 8px; opacity: 0.5; }
+
+        .user-marker { background: #ef4444; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(239,68,68,0.5); animation: pulse-user 2s infinite; }
+        .user-marker i { color: white; font-size: 16px; }
+        @keyframes pulse-user { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 70% { box-shadow: 0 0 0 18px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+
+        .relief-marker { background: #22c55e; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(34,197,94,0.4); animation: pulse-relief 2s infinite; }
+        .relief-marker i { color: white; font-size: 14px; }
+        @keyframes pulse-relief { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); } 70% { box-shadow: 0 0 0 16px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
+
+        .map-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0; border-top: 1px solid #e9edf2; margin-top: 10px; padding-top: 10px; }
+        .map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #475569; }
+        .map-legend-item .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+        .map-legend-item .dot-red { background: #ef4444; }
+        .map-legend-item .dot-green { background: #22c55e; }
+
+        .field-error { border-color: #ef4444 !important; background: rgba(239, 68, 68, 0.05) !important; }
+        .field-success { border-color: #22c55e !important; background: rgba(34, 197, 94, 0.05) !important; }
+
+        .confirm-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
+        .confirm-status.pending { background: #fef3c7; color: #92400e; }
+        .confirm-status.confirmed { background: #dcfce7; color: #166534; }
+        .confirm-status.error { background: #fee2e2; color: #991b1b; }
+
+        .address-confirm-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .gps-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .reject-note {
+            font-size: 11px;
+            color: #991b1b;
+            background: #fee2e2;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        .approve-note {
+            font-size: 11px;
+            color: #065f46;
+            background: #d1fae5;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .house-type-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            .resident-content { padding: 16px; }
+            .checkbox-grid { grid-template-columns: 1fr; }
+            #map-resident { height: 200px; }
+            .address-confirm-row { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="resident-content">
+        <!-- HEADER -->
+        <header class="flex flex-wrap justify-between items-center bg-white p-4 rounded-2xl shadow-sm mb-6 border border-slate-200/60">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">🏠 Cổng thông tin người dân</h1>
+                <p class="text-xs text-slate-500">Gửi yêu cầu hỗ trợ nhà lắp ghép sau thiên tai</p>
+            </div>
+            <div class="nav-switch">
+                <button onclick="handleLogout()" class="nav-btn nav-btn-logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- CỘT 1: FORM -->
+            <div class="lg:col-span-1">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fa-regular fa-pen-to-square text-blue-500 mr-1"></i> Đăng ký cứu trợ</h4>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Họ và tên <span class="text-red-500">*</span></label>
+                        <input type="text" id="reqName" placeholder="Nhập họ tên của bạn..." />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Số điện thoại <span class="text-red-500">*</span></label>
+                        <input type="tel" id="reqPhone" placeholder="Nhập số điện thoại..." />
+                    </div>
+
+                    <div class="form-group" id="streetGroup">
+                        <label>🏠 Số nhà / Tên đường <span class="text-red-500" id="streetRequired">*</span></label>
+                        <input type="text" id="reqStreet" placeholder="VD: Số 12, đường Nguyễn Văn Linh..." oninput="updateFullAddress()" />
+                        <div class="required-note" id="streetNote">
+                            <span class="highlight">*</span> Bắt buộc nếu không dùng GPS
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📍 Tỉnh <span class="text-red-500">*</span></label>
+                        <select id="reqProvince" onchange="updateDistricts()">
+                            <option value="">-- Chọn Tỉnh --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📍 Huyện <span class="text-red-500">*</span></label>
+                        <select id="reqDistrict" onchange="updateWards()" disabled>
+                            <option value="">-- Chọn Huyện --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📍 Xã <span class="text-red-500">*</span></label>
+                        <select id="reqWard" disabled>
+                            <option value="">-- Chọn Xã --</option>
+                        </select>
+                    </div>
+
+                    <div class="address-display" id="addressDisplay">
+                        <span class="label">Địa chỉ:</span>
+                        <span id="fullAddressText">Chưa có địa chỉ</span>
+                        <span class="confirm-status pending" id="confirmStatus">⏳ Chưa xác nhận</span>
+                        <span class="gps-badge" id="gpsBadge" style="display:none;">📡 GPS</span>
+                    </div>
+
+                    <div class="address-confirm-row">
+                        <button class="btn-confirm" id="confirmAddressBtn" onclick="confirmAddress()">
+                            <i class="fa-solid fa-check-circle"></i> Xác nhận địa chỉ
+                        </button>
+                        <button class="btn-confirm confirmed" onclick="useGpsLocation()" style="background:#3b82f6;">
+                            <i class="fa-solid fa-satellite"></i> Dùng GPS
+                        </button>
+                        <span class="text-xs text-slate-400" id="confirmResult"></span>
+                    </div>
+
+                    <div class="required-note" style="margin-bottom:10px;">
+                        <span class="highlight">*</span> Bắt buộc: Chọn Tỉnh/Huyện/Xã <span class="highlight">HOẶC</span> bật GPS, sau đó <span class="highlight">"Xác nhận địa chỉ"</span>
+                    </div>
+
+                    <div class="form-group" style="display:none;">
+                        <label>📡 Vị trí GPS</label>
+                        <button type="button" class="btn-gps" id="btnGps" onclick="getGpsLocation()">
+                            <i class="fa-solid fa-satellite"></i> Lấy vị trí GPS
+                        </button>
+                        <div id="gpsStatus" class="gps-status gps-inactive">
+                            <i class="fa-regular fa-circle-xmark"></i> Chưa xác định
+                        </div>
+                        <input type="hidden" id="reqLat" value="" />
+                        <input type="hidden" id="reqLng" value="" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>📋 Tình trạng</label>
+                        <div class="checkbox-grid" id="statusGrid">
+                            <div class="checkbox-item"><input type="checkbox" id="st1" /><label for="st1">🏚️ Nhà bị sập hoàn toàn</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="st2" /><label for="st2">🔨 Nhà hư hỏng nặng</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="st3" /><label for="st3">🏕️ Không còn nơi ở</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="st4" /><label for="st4">👶 Gia đình có trẻ nhỏ</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="st5" /><label for="st5">🧓 Có người già</label></div>
+                            <div class="checkbox-item"><input type="checkbox" id="st6" /><label for="st6">♿ Có người khuyết tật</label></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>👨‍👩‍👧‍👦 Số người</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-slate-500">Người lớn <span class="text-red-500">*</span></label>
+                                <input type="number" id="reqAdults" value="2" min="1" max="20" onchange="updateHouseType()" />
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500">Trẻ em</label>
+                                <input type="number" id="reqChildren" value="1" min="0" max="10" onchange="updateHouseType()" />
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">⚠️ Loại nhà được xác định dựa trên số người lớn</div>
+                    </div>
+
+                    <!-- HIỂN THỊ LOẠI NHÀ SẼ ĐƯỢC CẤP -->
+                    <div class="form-group p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <label class="text-xs text-blue-600 font-semibold">🏠 Loại nhà sẽ được cấp</label>
+                        <div class="mt-1" id="houseTypeDisplay">
+                            <div class="flex items-center gap-2 p-2 rounded-lg border bg-blue-100 text-blue-700 border-blue-200">
+                                <span class="text-2xl">🔵</span>
+                                <div>
+                                    <span class="font-bold">🏠 Shelter 24m²</span>
+                                    <span class="text-xs opacity-75 ml-2">(Dành cho 3-4 người)</span>
+                                    <div class="text-[10px] opacity-75 mt-0.5">👤 2 người lớn</div>
+                                    <div class="text-[10px] opacity-75">📦 Số lượng: 1 căn</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">* Mỗi yêu cầu được cấp 1 căn nhà phù hợp với số người lớn</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🚨 Mức khẩn cấp <span class="text-red-500">*</span></label>
+                        <select id="reqUrgency">
+                            <option value="critical">🔴 Khẩn cấp</option>
+                            <option value="high">🟠 Cao</option>
+                            <option value="normal" selected>🟢 Bình thường</option>
+                        </select>
+                    </div>
+
+                    <button onclick="submitRequest()" class="btn-primary" id="submitBtn">
+                        <i class="fa-regular fa-paper-plane mr-2"></i> GỬI YÊU CẦU
+                    </button>
+
+                    <div class="request-code" id="requestCodeResult">
+                        <div class="text-xs text-emerald-700">✅ Yêu cầu đã được gửi</div>
+                        <div class="code" id="requestCodeDisplay">VN-HUE-2026-000135</div>
+                        <div class="text-xs text-emerald-700 mt-1">Mã cứu trợ của bạn</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CỘT 2: DANH SÁCH YÊU CẦU -->
+            <div class="lg:col-span-1">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fa-regular fa-list text-blue-500 mr-1"></i> Yêu cầu đã gửi</h4>
+                        <span class="text-xs text-slate-400" id="request-count">0 yêu cầu</span>
+                    </div>
+                    <div id="request-list" class="scrollable-list">
+                        <div class="empty-state">
+                            <i class="fa-regular fa-inbox"></i>
+                            <p class="text-sm">Chưa có yêu cầu nào</p>
+                            <p class="text-xs mt-1">Hãy gửi yêu cầu cứu trợ để được hỗ trợ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CỘT 3: BẢN ĐỒ + ĐIỂM CỨU TRỢ -->
+            <div class="lg:col-span-1 space-y-4">
+                <div class="card p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-sm text-slate-700"><i class="fa-solid fa-map text-blue-500 mr-1"></i> Bản đồ</h4>
+                        <button onclick="getGpsLocation()" class="text-xs bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg hover:bg-emerald-100 transition">
+                            <i class="fa-solid fa-crosshairs mr-1"></i> Định vị
+                        </button>
+                    </div>
+                    <div id="map-resident"></div>
+                    <div class="map-legend">
+                        <span class="text-xs font-semibold text-slate-600 mr-1">📍 Chú thích:</span>
+                        <div class="map-legend-item"><span class="dot dot-red"></span>Vị trí của bạn</div>
+                        <div class="map-legend-item"><span class="dot dot-green"></span>Điểm cứu trợ</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-[10px] text-slate-400" id="map-coords">Chưa có vị trí</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-hand-holding-heart text-green-500 mr-1"></i> Điểm cứu trợ gần bạn</h4>
+                        <span class="text-xs text-slate-400" id="relief-count">0 điểm</span>
+                    </div>
+                    <div id="relief-list" class="scrollable-list" style="max-height:200px;">
+                        <div class="empty-state">
+                            <i class="fa-regular fa-compass"></i>
+                            <p class="text-sm">Chưa có vị trí</p>
+                            <p class="text-xs mt-1">Hãy xác nhận địa chỉ để tìm điểm cứu trợ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-blue-50 border-blue-200">
+                    <h4 class="font-bold text-sm text-blue-700 mb-2"><i class="fa-regular fa-circle-question mr-1"></i> Hướng dẫn</h4>
+                    <ul class="text-xs text-blue-700 space-y-1.5">
+                        <li class="flex items-start gap-2">1. Nhập thông tin cá nhân</li>
+                        <li class="flex items-start gap-2">2. <span class="font-bold">Bắt buộc:</span> Chọn Tỉnh/Huyện/Xã <span class="font-bold">HOẶC</span> bật GPS</li>
+                        <li class="flex items-start gap-2">3. Nếu dùng GPS, <span class="font-bold">không cần</span> nhập số nhà</li>
+                        <li class="flex items-start gap-2">4. Bấm <span class="font-bold">"Xác nhận địa chỉ"</span> để zoom bản đồ</li>
+                        <li class="flex items-start gap-2">5. Nhập số người lớn để xác định loại nhà</li>
+                        <li class="flex items-start gap-2">6. Gửi yêu cầu cứu trợ</li>
+                        <li class="flex items-start gap-2">7. Khi nhận được hàng, bấm <span class="font-bold">"✅ Đã nhận hàng"</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // HÀM XÁC ĐỊNH LOẠI NHÀ THEO SỐ NGƯỜI TRƯỞNG THÀNH
+        // ============================================================
+        function getHouseType(adults, children) {
+            // CHỈ DỰA TRÊN SỐ NGƯỜI TRƯỞNG THÀNH (adults)
+            if (adults <= 2) {
+                return { 
+                    size: '18', 
+                    label: '🏠 Shelter 18m²', 
+                    name: 'Shelter 18m²', 
+                    desc: 'Dành cho 1-2 người',
+                    icon: '🟢',
+                    color: 'green'
+                };
+            } else if (adults <= 4) {
+                return { 
+                    size: '24', 
+                    label: '🏠 Shelter 24m²', 
+                    name: 'Shelter 24m²', 
+                    desc: 'Dành cho 3-4 người',
+                    icon: '🔵',
+                    color: 'blue'
+                };
+            } else if (adults <= 6) {
+                return { 
+                    size: '30', 
+                    label: '🏠 Shelter 30m²', 
+                    name: 'Shelter 30m²', 
+                    desc: 'Dành cho 5-6 người',
+                    icon: '🟡',
+                    color: 'yellow'
+                };
+            } else if (adults <= 8) {
+                return { 
+                    size: '36', 
+                    label: '🏠 Shelter 36m²', 
+                    name: 'Shelter 36m²', 
+                    desc: 'Dành cho 7-8 người',
+                    icon: '🟠',
+                    color: 'orange'
+                };
+            } else if (adults <= 10) {
+                return { 
+                    size: '48', 
+                    label: '🏠 Shelter 48m²', 
+                    name: 'Shelter 48m²', 
+                    desc: 'Dành cho 9-10 người',
+                    icon: '🔴',
+                    color: 'red'
+                };
+            } else {
+                return { 
+                    size: 'special', 
+                    label: '🏠 Shelter Đặc biệt', 
+                    name: 'Shelter Đặc biệt', 
+                    desc: 'Dành cho 10+ người',
+                    icon: '🟣',
+                    color: 'purple'
+                };
+            }
+        }
+
+        function updateHouseType() {
+            const adults = parseInt(document.getElementById('reqAdults').value) || 0;
+            const children = parseInt(document.getElementById('reqChildren').value) || 0;
+            const house = getHouseType(adults, children);
+            
+            const colorMap = {
+                'green': 'bg-green-100 text-green-700 border-green-200',
+                'blue': 'bg-blue-100 text-blue-700 border-blue-200',
+                'yellow': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                'orange': 'bg-orange-100 text-orange-700 border-orange-200',
+                'red': 'bg-red-100 text-red-700 border-red-200',
+                'purple': 'bg-purple-100 text-purple-700 border-purple-200'
+            };
+            
+            const borderClass = colorMap[house.color] || 'bg-gray-100 text-gray-700 border-gray-200';
+            
+            document.getElementById('houseTypeDisplay').innerHTML = `
+                <div class="flex items-center gap-2 p-2 rounded-lg border ${borderClass}">
+                    <span class="text-2xl">${house.icon}</span>
+                    <div>
+                        <span class="font-bold">${house.label}</span>
+                        <span class="text-xs opacity-75 ml-2">(${house.desc})</span>
+                        <div class="text-[10px] opacity-75 mt-0.5">
+                            👤 ${adults} người lớn
+                        </div>
+                        <div class="text-[10px] opacity-75">📦 Số lượng: 1 căn</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // STATE
+        // ============================================================
+        let addressConfirmed = false;
+        let confirmedLat = null;
+        let confirmedLng = null;
+        let isGpsMode = false;
+        let mapResident = null;
+        let userMarker = null;
+        let userLocation = null;
+        let previousRequests = [];
+
+        // ============================================================
+        // RELIEF POINTS
+        // ============================================================
+        const RELIEF_POINTS = [
+            { name: "Trung tâm cứu trợ Đà Nẵng", lat: 16.0544, lng: 108.2022, stock: 30, address: "Đà Nẵng" },
+            { name: "Chùa Thiên Mụ - Huế", lat: 16.4630, lng: 107.5900, stock: 20, address: "TP Huế" },
+            { name: "UBND huyện Bố Trạch", lat: 17.4800, lng: 106.4500, stock: 10, address: "Quảng Bình" },
+            { name: "Trung tâm cứu trợ Quảng Nam", lat: 15.8439, lng: 108.1829, stock: 15, address: "Quảng Nam" },
+            { name: "Điểm cứu trợ Quảng Trị", lat: 16.6989, lng: 107.2689, stock: 12, address: "Quảng Trị" }
+        ];
+
+        // ============================================================
+        // MAP
+        // ============================================================
+        function initMap() {
+            const container = document.getElementById('map-resident');
+            if (!container) return;
+            if (mapResident) { mapResident.invalidateSize(); return; }
+            if (typeof L === 'undefined') { setTimeout(initMap, 500); return; }
+
+            mapResident = L.map('map-resident', { center: [16.0, 107.5], zoom: 7, zoomControl: true });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(mapResident);
+
+            RELIEF_POINTS.forEach(p => {
+                const popup = `<b>🏥 ${p.name}</b><br>📍 ${p.address || ''}<br>📦 Còn ${p.stock} bộ<br>
+                    <button onclick="navigateTo(${p.lat}, ${p.lng}, '${p.name}')" 
+                        class="mt-2 bg-emerald-500 text-white px-3 py-1 rounded text-xs hover:bg-emerald-600">
+                        <i class="fa-solid fa-map-location-dot"></i> Chỉ đường
+                    </button>`;
+                const marker = L.marker([p.lat, p.lng], {
+                    icon: L.divIcon({
+                        className: 'relief-marker',
+                        html: `<i class="fa-solid fa-hand-holding-heart"></i>`,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    })
+                }).addTo(mapResident);
+                marker.bindPopup(popup);
+            });
+
+            setTimeout(() => {
+                const user = AppData.getUser();
+                if (user && user.lat && user.lng) {
+                    const lat = parseFloat(user.lat);
+                    const lng = parseFloat(user.lng);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        updateUserMarker(lat, lng);
+                        document.getElementById('map-coords').textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                        updateReliefList(lat, lng);
+                    }
+                }
+            }, 500);
+
+            setTimeout(() => mapResident.invalidateSize(), 400);
+        }
+
+        function navigateTo(lat, lng, name) {
+            if (userLocation) {
+                window.open(`https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${lat},${lng}`, '_blank');
+            } else {
+                window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                showToast('📍 Đang mở Google Maps', 'info');
+            }
+        }
+
+        function updateUserMarker(lat, lng) {
+            if (!mapResident) return;
+            if (userMarker) mapResident.removeLayer(userMarker);
+            userMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: `<i class="fa-solid fa-user"></i>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                })
+            }).addTo(mapResident);
+            userMarker.bindPopup(`<b>📍 Vị trí của bạn</b><br>${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            mapResident.setView([lat, lng], 12);
+            document.getElementById('reqLat').value = lat;
+            document.getElementById('reqLng').value = lng;
+            document.getElementById('map-coords').textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            userLocation = { lat, lng };
+            updateReliefList(lat, lng);
+        }
+
+        function zoomToLocation(lat, lng, label) {
+            if (!mapResident) return;
+            mapResident.setView([lat, lng], 13);
+            if (userMarker) {
+                mapResident.removeLayer(userMarker);
+                userMarker = null;
+            }
+            const tempMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: `<i class="fa-solid fa-location-dot"></i>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                })
+            }).addTo(mapResident);
+            tempMarker.bindPopup(`<b>📍 ${label}</b><br>${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            setTimeout(() => {
+                if (mapResident && tempMarker) mapResident.removeLayer(tempMarker);
+            }, 5000);
+        }
+
+        function updateReliefList(lat, lng) {
+            const container = document.getElementById('relief-list');
+            if (!container) return;
+
+            const sorted = RELIEF_POINTS.map(p => {
+                const dist = Math.sqrt(Math.pow(p.lat - lat, 2) + Math.pow(p.lng - lng, 2)) * 111;
+                return { ...p, distance: dist };
+            }).sort((a, b) => a.distance - b.distance);
+
+            document.getElementById('relief-count').textContent = `${sorted.length} điểm`;
+
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fa-regular fa-compass"></i><p class="text-sm">Không có điểm cứu trợ nào</p></div>`;
+                return;
+            }
+
+            container.innerHTML = sorted.slice(0, 5).map(p => `
+                <div class="relief-item">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">${p.name}</p>
+                        <p class="text-xs text-slate-500">📍 ${p.address || ''}</p>
+                        <p class="text-xs text-slate-500">📦 ${p.stock} bộ</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="distance">${p.distance.toFixed(1)} km</div>
+                        <button onclick="navigateTo(${p.lat}, ${p.lng}, '${p.name}')" 
+                            class="mt-1 bg-emerald-500 text-white px-3 py-1 rounded text-xs hover:bg-emerald-600 transition">
+                            <i class="fa-solid fa-map-location-dot"></i> Dẫn đường
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================================
+        // CASCADE LOCATION FILTERS
+        // ============================================================
+        function loadProvinces() {
+            const select = document.getElementById('reqProvince');
+            const provinces = LocationData.getProvinces();
+            select.innerHTML = '<option value="">-- Chọn Tỉnh --</option>';
+            provinces.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                select.appendChild(option);
+            });
+        }
+
+        function updateDistricts() {
+            const provinceId = document.getElementById('reqProvince').value;
+            const districtSelect = document.getElementById('reqDistrict');
+            const wardSelect = document.getElementById('reqWard');
+            
+            districtSelect.innerHTML = '<option value="">-- Chọn Huyện --</option>';
+            wardSelect.innerHTML = '<option value="">-- Chọn Xã --</option>';
+            wardSelect.disabled = true;
+            
+            if (!provinceId) {
+                districtSelect.disabled = true;
+                resetAddressConfirm();
+                return;
+            }
+            
+            const districts = LocationData.getDistricts(provinceId);
+            districtSelect.disabled = false;
+            
+            districts.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                districtSelect.appendChild(option);
+            });
+            
+            resetAddressConfirm();
+            updateFullAddress();
+        }
+
+        function updateWards() {
+            const districtId = document.getElementById('reqDistrict').value;
+            const wardSelect = document.getElementById('reqWard');
+            
+            wardSelect.innerHTML = '<option value="">-- Chọn Xã --</option>';
+            
+            if (!districtId) {
+                wardSelect.disabled = true;
+                resetAddressConfirm();
+                return;
+            }
+            
+            const wards = LocationData.getWards(districtId);
+            wardSelect.disabled = false;
+            
+            wards.forEach(w => {
+                const option = document.createElement('option');
+                option.value = w.id;
+                option.textContent = w.name;
+                wardSelect.appendChild(option);
+            });
+            
+            resetAddressConfirm();
+            updateFullAddress();
+        }
+
+        // ============================================================
+        // ADDRESS CONFIRMATION
+        // ============================================================
+        function getSelectedAddress() {
+            const provinceEl = document.getElementById('reqProvince');
+            const districtEl = document.getElementById('reqDistrict');
+            const wardEl = document.getElementById('reqWard');
+            const street = document.getElementById('reqStreet').value.trim();
+            
+            const provinceName = provinceEl.options[provinceEl.selectedIndex]?.text || '';
+            const districtName = districtEl.options[districtEl.selectedIndex]?.text || '';
+            const wardName = wardEl.options[wardEl.selectedIndex]?.text || '';
+            
+            return { street, ward: wardName, district: districtName, province: provinceName };
+        }
+
+        function getFullAddress() {
+            const addr = getSelectedAddress();
+            const parts = [];
+            if (!isGpsMode && addr.street) parts.push(addr.street);
+            if (addr.ward) parts.push(addr.ward);
+            if (addr.district) parts.push(addr.district);
+            if (addr.province) parts.push(addr.province);
+            return parts.length > 0 ? parts.join(', ') : 'Chưa có địa chỉ';
+        }
+
+        function updateFullAddress() {
+            const full = getFullAddress();
+            document.getElementById('fullAddressText').textContent = full;
+            resetAddressConfirm();
+            
+            if (isGpsMode) {
+                document.getElementById('streetRequired').textContent = '';
+                document.getElementById('streetNote').textContent = '✅ Đã dùng GPS, không cần nhập số nhà';
+                document.getElementById('streetNote').style.color = '#166534';
+                document.getElementById('reqStreet').placeholder = 'Không cần nhập (đã dùng GPS)';
+            } else {
+                document.getElementById('streetRequired').textContent = '*';
+                document.getElementById('streetNote').textContent = '* Bắt buộc nếu không dùng GPS';
+                document.getElementById('streetNote').style.color = '#94a3b8';
+                document.getElementById('reqStreet').placeholder = 'VD: Số 12, đường Nguyễn Văn Linh...';
+            }
+        }
+
+        function resetAddressConfirm() {
+            addressConfirmed = false;
+            confirmedLat = null;
+            confirmedLng = null;
+            document.getElementById('confirmStatus').className = 'confirm-status pending';
+            document.getElementById('confirmStatus').textContent = '⏳ Chưa xác nhận';
+            document.getElementById('confirmResult').textContent = '';
+            document.getElementById('confirmAddressBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Xác nhận địa chỉ';
+            document.getElementById('confirmAddressBtn').className = 'btn-confirm';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('gpsBadge').style.display = 'none';
+        }
+
+        function confirmAddress() {
+            const addr = getSelectedAddress();
+            
+            if (!addr.province) {
+                showToast('⚠️ Vui lòng chọn Tỉnh/Thành phố!', 'error');
+                document.getElementById('reqProvince').focus();
+                return;
+            }
+            if (!addr.district) {
+                showToast('⚠️ Vui lòng chọn Huyện!', 'error');
+                document.getElementById('reqDistrict').focus();
+                return;
+            }
+            if (!addr.ward) {
+                showToast('⚠️ Vui lòng chọn Xã!', 'error');
+                document.getElementById('reqWard').focus();
+                return;
+            }
+
+            if (!isGpsMode && !addr.street) {
+                showToast('⚠️ Vui lòng nhập số nhà / tên đường!', 'error');
+                document.getElementById('reqStreet').focus();
+                return;
+            }
+
+            const provinceData = LocationData.provinces.find(p => p.name === addr.province);
+            if (!provinceData) {
+                showToast('❌ Không tìm thấy tỉnh này trong hệ thống!', 'error');
+                return;
+            }
+            
+            const districtData = provinceData.districts.find(d => d.name === addr.district);
+            if (!districtData) {
+                showToast('❌ Không tìm thấy huyện này!', 'error');
+                return;
+            }
+            
+            if (!districtData.wards.includes(addr.ward)) {
+                showToast('❌ Không tìm thấy xã này trong dữ liệu!', 'error');
+                return;
+            }
+
+            let foundLat = null;
+            let foundLng = null;
+            
+            const provinceCoords = {
+                'Quảng Nam': { lat: 15.8439, lng: 108.1829 },
+                'Thừa Thiên Huế': { lat: 16.4630, lng: 107.5900 },
+                'Quảng Bình': { lat: 17.4800, lng: 106.4500 },
+                'Đà Nẵng': { lat: 16.0544, lng: 108.2022 },
+                'Quảng Trị': { lat: 16.6989, lng: 107.2689 },
+                'Quảng Ngãi': { lat: 15.1200, lng: 108.8000 },
+                'Bình Định': { lat: 13.7700, lng: 109.2300 },
+                'Phú Yên': { lat: 13.0800, lng: 109.3000 },
+                'Khánh Hòa': { lat: 12.2500, lng: 109.1900 },
+                'Ninh Thuận': { lat: 11.5700, lng: 108.9900 },
+                'Bình Thuận': { lat: 10.9300, lng: 108.1000 },
+                'Thanh Hóa': { lat: 19.8000, lng: 105.7700 },
+                'Nghệ An': { lat: 18.6700, lng: 105.6700 },
+                'Hà Tĩnh': { lat: 18.3400, lng: 105.9000 }
+            };
+
+            if (provinceCoords[addr.province]) {
+                foundLat = provinceCoords[addr.province].lat;
+                foundLng = provinceCoords[addr.province].lng;
+                const seed = addr.ward.length + addr.district.length;
+                foundLat += (seed % 10) * 0.001 - 0.005;
+                foundLng += (seed % 7) * 0.001 - 0.003;
+            } else {
+                foundLat = 21.0285;
+                foundLng = 105.8542;
+                showToast('⚠️ Không có tọa độ chính xác, sử dụng vị trí gần đúng', 'warning');
+            }
+
+            if (foundLat && foundLng) {
+                addressConfirmed = true;
+                confirmedLat = foundLat;
+                confirmedLng = foundLng;
+                
+                document.getElementById('confirmStatus').className = 'confirm-status confirmed';
+                document.getElementById('confirmStatus').textContent = isGpsMode ? '✅ Đã xác nhận (GPS)' : '✅ Đã xác nhận';
+                document.getElementById('confirmResult').textContent = '✅ Địa chỉ hợp lệ!';
+                document.getElementById('confirmResult').style.color = '#166534';
+                document.getElementById('confirmAddressBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> ✅ Đã xác nhận';
+                document.getElementById('confirmAddressBtn').className = 'btn-confirm confirmed';
+                document.getElementById('submitBtn').disabled = false;
+                
+                if (isGpsMode) {
+                    document.getElementById('gpsBadge').style.display = 'inline-flex';
+                }
+                
+                zoomToLocation(foundLat, foundLng, `${addr.ward}, ${addr.district}`);
+                updateUserMarker(foundLat, foundLng);
+                
+                showToast(`✅ Đã xác nhận địa chỉ: ${getFullAddress()}`, 'success');
+            } else {
+                showToast('❌ Không thể xác định vị trí của địa chỉ này!', 'error');
+                document.getElementById('confirmStatus').className = 'confirm-status error';
+                document.getElementById('confirmStatus').textContent = '❌ Lỗi';
+                document.getElementById('confirmResult').textContent = '❌ Không xác định được vị trí';
+                document.getElementById('confirmResult').style.color = '#991b1b';
+            }
+        }
+
+        function useGpsLocation() {
+            isGpsMode = true;
+            document.getElementById('streetGroup').classList.add('field-success');
+            updateFullAddress();
+            getGpsLocation();
+        }
+
+        // ============================================================
+        // GPS - TỰ ĐỘNG ĐIỀN TỈNH/HUYỆN/XÃ
+        // ============================================================
+        function getGpsLocation() {
+            const statusEl = document.getElementById('gpsStatus');
+            const btnGps = document.getElementById('btnGps');
+            
+            statusEl.className = 'gps-status gps-loading';
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm GPS...';
+            btnGps.classList.add('loading');
+            btnGps.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        userLocation = { lat, lng };
+                        statusEl.className = 'gps-status gps-active';
+                        statusEl.innerHTML = `<i class="fa-regular fa-circle-check"></i> GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                        btnGps.classList.remove('loading');
+                        btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                        updateUserMarker(lat, lng);
+                        
+                        findLocationFromGPS(lat, lng);
+                        
+                        addressConfirmed = true;
+                        confirmedLat = lat;
+                        confirmedLng = lng;
+                        document.getElementById('confirmStatus').className = 'confirm-status confirmed';
+                        document.getElementById('confirmStatus').textContent = '✅ Đã xác nhận (GPS)';
+                        document.getElementById('confirmResult').textContent = '✅ Vị trí GPS đã xác nhận';
+                        document.getElementById('confirmResult').style.color = '#166534';
+                        document.getElementById('confirmAddressBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> ✅ Đã xác nhận (GPS)';
+                        document.getElementById('confirmAddressBtn').className = 'btn-confirm confirmed';
+                        document.getElementById('submitBtn').disabled = false;
+                        document.getElementById('gpsBadge').style.display = 'inline-flex';
+                        
+                        document.getElementById('reqStreet').value = 'GPS';
+                        
+                        showToast('📍 Đã xác định vị trí GPS và tự động điền địa chỉ!', 'success');
+                    },
+                    function() {
+                        statusEl.className = 'gps-status gps-inactive';
+                        statusEl.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Không thể lấy GPS';
+                        btnGps.classList.remove('loading');
+                        btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                        showToast('❌ Không thể lấy vị trí GPS, vui lòng nhập địa chỉ thủ công', 'error');
+                        isGpsMode = false;
+                        updateFullAddress();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                statusEl.className = 'gps-status gps-inactive';
+                statusEl.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Trình duyệt không hỗ trợ GPS';
+                btnGps.classList.remove('loading');
+                btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                showToast('❌ Trình duyệt không hỗ trợ GPS', 'error');
+                isGpsMode = false;
+                updateFullAddress();
+            }
+        }
+
+        // ===== TÌM TỈNH/HUYỆN/XÃ TỪ GPS =====
+        function findLocationFromGPS(lat, lng) {
+            const provinceCoords = [
+                { name: 'Quảng Nam', lat: 15.8439, lng: 108.1829, districts: ['Điện Bàn', 'Duy Xuyên', 'Nam Trà My', 'Bắc Trà My', 'Phước Sơn', 'Đông Giang', 'Đại Lộc', 'Hội An'] },
+                { name: 'Thừa Thiên Huế', lat: 16.4630, lng: 107.5900, districts: ['A Lưới', 'Phú Lộc', 'Phú Vang', 'Quảng Điền', 'Hương Trà', 'Hương Thủy'] },
+                { name: 'Quảng Bình', lat: 17.4800, lng: 106.4500, districts: ['Minh Hóa', 'Tuyên Hóa', 'Bố Trạch', 'Quảng Ninh', 'Lệ Thủy'] },
+                { name: 'Đà Nẵng', lat: 16.0544, lng: 108.2022, districts: ['Hòa Vang', 'Liên Chiểu', 'Sơn Trà'] },
+                { name: 'Quảng Trị', lat: 16.6989, lng: 107.2689, districts: ['Hướng Hóa', 'Đakrông', 'Cam Lộ', 'Hải Lăng', 'Triệu Phong'] },
+                { name: 'Quảng Ngãi', lat: 15.1200, lng: 108.8000, districts: ['Ba Tơ', 'Sơn Tây', 'Sơn Hà', 'Minh Long', 'Trà Bồng', 'Bình Sơn'] },
+                { name: 'Bình Định', lat: 13.7700, lng: 109.2300, districts: ['An Lão', 'Vĩnh Thạnh', 'Hoài Ân', 'Tây Sơn', 'Phù Cát'] },
+                { name: 'Phú Yên', lat: 13.0800, lng: 109.3000, districts: ['Đồng Xuân', 'Sơn Hòa', 'Sông Hinh', 'Tuy An', 'Đông Hòa'] },
+                { name: 'Khánh Hòa', lat: 12.2500, lng: 109.1900, districts: ['Khánh Sơn', 'Khánh Vĩnh', 'Cam Lâm', 'Ninh Hòa'] },
+                { name: 'Ninh Thuận', lat: 11.5700, lng: 108.9900, districts: ['Bác Ái', 'Ninh Sơn', 'Thuận Bắc'] },
+                { name: 'Bình Thuận', lat: 10.9300, lng: 108.1000, districts: ['Đức Linh', 'Tánh Linh', 'Hàm Thuận Bắc', 'Bắc Bình'] },
+                { name: 'Thanh Hóa', lat: 19.8000, lng: 105.7700, districts: ['Mường Lát', 'Quan Sơn', 'Bá Thước', 'Cẩm Thủy', 'Thường Xuân', 'Lang Chánh'] },
+                { name: 'Nghệ An', lat: 18.6700, lng: 105.6700, districts: ['Kỳ Sơn', 'Tương Dương', 'Con Cuông', 'Quỳ Châu', 'Quế Phong', 'Thanh Chương'] },
+                { name: 'Hà Tĩnh', lat: 18.3400, lng: 105.9000, districts: ['Hương Khê', 'Hương Sơn', 'Vũ Quang', 'Đức Thọ', 'Cẩm Xuyên', 'Kỳ Anh'] }
+            ];
+
+            let nearestProvince = null;
+            let minDist = Infinity;
+
+            provinceCoords.forEach(p => {
+                const dist = Math.sqrt(Math.pow(p.lat - lat, 2) + Math.pow(p.lng - lng, 2));
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestProvince = p;
+                }
+            });
+
+            if (nearestProvince && minDist < 0.5) {
+                const provinceData = LocationData.provinces.find(p => p.name === nearestProvince.name);
+                if (provinceData) {
+                    const provinceSelect = document.getElementById('reqProvince');
+                    for (let opt of provinceSelect.options) {
+                        if (opt.text === nearestProvince.name) {
+                            opt.selected = true;
+                            updateDistricts();
+                            break;
+                        }
+                    }
+                    
+                    setTimeout(() => {
+                        let nearestDistrict = null;
+                        let minDist2 = Infinity;
+                        const districts = LocationData.getDistricts(provinceData.id);
+                        
+                        const districtCoords = {
+                            'A Lưới': { lat: 16.2333, lng: 107.2667 },
+                            'Phú Lộc': { lat: 16.3000, lng: 107.9167 },
+                            'Phú Vang': { lat: 16.4500, lng: 107.7333 },
+                            'Quảng Điền': { lat: 16.5833, lng: 107.5167 },
+                            'Hương Trà': { lat: 16.4833, lng: 107.4667 },
+                            'Hương Thủy': { lat: 16.4000, lng: 107.6167 },
+                            'Điện Bàn': { lat: 15.8500, lng: 108.2167 },
+                            'Duy Xuyên': { lat: 15.8000, lng: 108.1667 },
+                            'Nam Trà My': { lat: 15.2500, lng: 108.2000 },
+                            'Bắc Trà My': { lat: 15.4000, lng: 108.1000 },
+                            'Hội An': { lat: 15.8833, lng: 108.3333 },
+                            'Đại Lộc': { lat: 15.8167, lng: 108.1000 },
+                            'Phước Sơn': { lat: 15.4167, lng: 107.8333 },
+                            'Đông Giang': { lat: 15.9667, lng: 107.8000 },
+                            'Bố Trạch': { lat: 17.5000, lng: 106.4000 },
+                            'Lệ Thủy': { lat: 17.1333, lng: 106.7000 },
+                            'Minh Hóa': { lat: 17.7000, lng: 105.9833 },
+                            'Tuyên Hóa': { lat: 17.8833, lng: 106.0000 },
+                            'Quảng Ninh': { lat: 17.2667, lng: 106.5333 },
+                            'Hòa Vang': { lat: 16.0000, lng: 108.1000 },
+                            'Liên Chiểu': { lat: 16.0833, lng: 108.1167 },
+                            'Sơn Trà': { lat: 16.1000, lng: 108.2333 },
+                            'Hướng Hóa': { lat: 16.7000, lng: 106.6667 },
+                            'Đakrông': { lat: 16.6667, lng: 106.9167 },
+                            'Cam Lộ': { lat: 16.7833, lng: 107.1000 },
+                            'Hải Lăng': { lat: 16.6500, lng: 107.2500 },
+                            'Triệu Phong': { lat: 16.8333, lng: 107.1833 }
+                        };
+
+                        districts.forEach(d => {
+                            const coord = districtCoords[d.name];
+                            if (coord) {
+                                const dist = Math.sqrt(Math.pow(coord.lat - lat, 2) + Math.pow(coord.lng - lng, 2));
+                                if (dist < minDist2) {
+                                    minDist2 = dist;
+                                    nearestDistrict = d;
+                                }
+                            }
+                        });
+
+                        if (nearestDistrict && minDist2 < 0.3) {
+                            const districtSelect = document.getElementById('reqDistrict');
+                            for (let opt of districtSelect.options) {
+                                if (opt.text === nearestDistrict.name) {
+                                    opt.selected = true;
+                                    updateWards();
+                                    break;
+                                }
+                            }
+                            
+                            setTimeout(() => {
+                                const wardSelect = document.getElementById('reqWard');
+                                if (wardSelect.options.length > 1) {
+                                    wardSelect.selectedIndex = 1;
+                                    updateFullAddress();
+                                    const addr = getSelectedAddress();
+                                    const displayAddr = `${addr.ward || 'Xã'}, ${addr.district}, ${addr.province}`;
+                                    document.getElementById('fullAddressText').textContent = `📍 GPS: ${displayAddr}`;
+                                }
+                            }, 200);
+                        } else {
+                            const addr = getSelectedAddress();
+                            const displayAddr = `${addr.province}`;
+                            document.getElementById('fullAddressText').textContent = `📍 GPS: ${displayAddr}`;
+                        }
+                    }, 300);
+                }
+            } else {
+                showToast('⚠️ Không xác định được địa chỉ từ GPS, vui lòng nhập thủ công', 'warning');
+            }
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : type === 'warning' ? 'toast-warning' : 'toast-info'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.className = 'toast toast-fade-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============================================================
+        // SUBMIT REQUEST
+        // ============================================================
+        function submitRequest() {
+            if (!addressConfirmed) {
+                showToast('⚠️ Vui lòng xác nhận địa chỉ trước khi gửi yêu cầu!', 'warning');
+                return;
+            }
+
+            const name = document.getElementById('reqName').value.trim();
+            const phone = document.getElementById('reqPhone').value.trim();
+            const street = document.getElementById('reqStreet').value.trim();
+            const addr = getSelectedAddress();
+            const adults = parseInt(document.getElementById('reqAdults').value) || 0;
+            const children = parseInt(document.getElementById('reqChildren').value) || 0;
+            const urgency = document.getElementById('reqUrgency').value;
+
+            if (!name) { showToast('⚠️ Vui lòng nhập họ tên!', 'error'); return; }
+            if (!phone) { showToast('⚠️ Vui lòng nhập số điện thoại!', 'error'); return; }
+
+            if (!isGpsMode && !street) {
+                showToast('⚠️ Vui lòng nhập số nhà / tên đường!', 'error');
+                document.getElementById('reqStreet').focus();
+                return;
+            }
+
+            const statuses = [];
+            document.querySelectorAll('#statusGrid input:checked').forEach(cb => {
+                statuses.push(cb.nextElementSibling?.textContent || cb.id);
+            });
+
+            const totalPeople = adults + children;
+            const houseType = getHouseType(adults, children);
+            // CHỈ CẤP 1 CĂN NHÀ
+            const shelterNeed = 1;
+            
+            const provinceCode = addr.province ? addr.province.substring(0, 3).toUpperCase() : 'VNM';
+            const year = new Date().getFullYear();
+            const random = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+            const requestCode = `${provinceCode}-${year}-${random}`;
+            
+            let fullAddress = '';
+            if (isGpsMode) {
+                fullAddress = `GPS: ${addr.ward || ''}, ${addr.district || ''}, ${addr.province || ''}`;
+            } else {
+                fullAddress = [street, addr.ward, addr.district, addr.province].filter(Boolean).join(', ');
+            }
+
+            const requestData = {
+                id: 'req_' + Date.now(),
+                code: requestCode,
+                name, phone, address: fullAddress, 
+                street: isGpsMode ? 'GPS' : street,
+                xa: addr.ward || '', huyen: addr.district || '', tinh: addr.province || '',
+                lat: confirmedLat || null,
+                lng: confirmedLng || null,
+                statuses, adults, children, totalPeople, 
+                shelterNeed: shelterNeed, // CHỈ CẤP 1 CĂN
+                houseType: houseType, // Lưu loại nhà
+                urgency: urgency,
+                status: 'pending', 
+                createdAt: new Date().toISOString(),
+                isGps: isGpsMode,
+                received: false
+            };
+
+            AppData.addRequest(requestData);
+            AppData.addResident({ name, phone, address: fullAddress, status: 'Đang chờ' });
+
+            document.getElementById('requestCodeDisplay').textContent = requestCode;
+            document.getElementById('requestCodeResult').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang gửi...';
+
+            setTimeout(() => {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerHTML = '<i class="fa-regular fa-paper-plane mr-2"></i> GỬI YÊU CẦU';
+                showToast(`✅ Đã gửi! Mã: ${requestCode} - ${houseType.label}`, 'success');
+                loadRequests();
+                document.getElementById('reqName').value = '';
+                document.getElementById('reqPhone').value = '';
+                document.getElementById('reqStreet').value = '';
+                isGpsMode = false;
+                resetAddressConfirm();
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('gpsBadge').style.display = 'none';
+                updateFullAddress();
+                document.getElementById('gpsStatus').className = 'gps-status gps-inactive';
+                document.getElementById('gpsStatus').innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Chưa xác định';
+            }, 1500);
+        }
+
+        // ============================================================
+        // XÁC NHẬN ĐÃ NHẬN HÀNG
+        // ============================================================
+        function confirmReceived(requestId) {
+            if (!confirm('Xác nhận bạn đã nhận được hàng cứu trợ?')) return;
+            
+            const allRequests = AppData.getRequests();
+            const request = allRequests.find(r => r.id === requestId);
+            if (!request) {
+                showToast('⚠️ Không tìm thấy yêu cầu!', 'error');
+                return;
+            }
+            
+            if (request.received) {
+                showToast('⚠️ Bạn đã xác nhận nhận hàng trước đó!', 'warning');
+                return;
+            }
+            
+            request.received = true;
+            request.receivedAt = new Date().toISOString();
+            request.status = 'done';
+            
+            AppData.setRequests(allRequests);
+            
+            AppData.addNotification({
+                title: `📦 ${request.name} đã xác nhận nhận hàng`,
+                detail: `Yêu cầu ${request.code} - ${request.houseType?.label || 'Nhà cứu trợ'} đã được người dân xác nhận nhận hàng`,
+                type: 'received'
+            });
+            
+            const missions = AppData.getMissions();
+            const relatedMissions = missions.filter(m => m.requestId === requestId);
+            if (relatedMissions.length > 0) {
+                relatedMissions.forEach(m => {
+                    m.status = 'done';
+                    m.completedAt = new Date().toISOString();
+                });
+                AppData.setMissions(missions);
+            }
+            
+            showToast('🎉 Cảm ơn bạn đã xác nhận nhận hàng!', 'success');
+            loadRequests();
+        }
+
+        // ============================================================
+        // LOAD REQUESTS
+        // ============================================================
+        function loadRequests() {
+            const container = document.getElementById('request-list');
+            if (!container) return;
+
+            const user = AppData.getUser();
+            const allRequests = AppData.getRequests();
+            
+            const userRequests = allRequests.filter(r => {
+                if (r.name === user?.fullName) return true;
+                if (r.phone === user?.username) return true;
+                if (r.phone === user?.phone) return true;
+                return false;
+            });
+            
+            const currentIds = userRequests.map(r => r.id).join(',');
+            const prevIds = previousRequests.map(r => r.id).join(',');
+            
+            if (currentIds !== prevIds || userRequests.length !== previousRequests.length) {
+                userRequests.forEach(r => {
+                    const prev = previousRequests.find(p => p.id === r.id);
+                    if (prev && prev.status !== 'rejected' && r.status === 'rejected') {
+                        showToast(`❌ Yêu cầu ${r.code} đã bị từ chối bởi Admin!`, 'error');
+                    }
+                    if (prev && prev.status !== 'approved' && r.status === 'approved') {
+                        showToast(`✅ Yêu cầu ${r.code} đã được duyệt!`, 'success');
+                    }
+                    if (prev && prev.status !== 'cancelled' && r.status === 'cancelled') {
+                        showToast(`🗑️ Yêu cầu ${r.code} đã bị hủy!`, 'warning');
+                    }
+                });
+            }
+            
+            previousRequests = JSON.parse(JSON.stringify(userRequests));
+            
+            document.getElementById('request-count').textContent = `${userRequests.length} yêu cầu`;
+
+            if (userRequests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-regular fa-inbox"></i>
+                        <p class="text-sm">Chưa có yêu cầu nào</p>
+                        <p class="text-xs mt-1">Hãy gửi yêu cầu cứu trợ để được hỗ trợ</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusMap = {
+                'pending': { label: '⏳ Chờ xử lý', cls: 'status-pending' },
+                'processing': { label: '🔄 Đang xử lý', cls: 'status-processing' },
+                'approved': { label: '✅ Đã duyệt', cls: 'status-approved' },
+                'done': { label: '✅ Hoàn thành', cls: 'status-done' },
+                'rejected': { label: '❌ Từ chối', cls: 'status-rejected' },
+                'cancelled': { label: '🗑️ Đã hủy', cls: 'status-cancelled' }
+            };
+
+            const sortedRequests = [...userRequests].sort((a, b) => {
+                const order = { 'pending': 0, 'processing': 1, 'approved': 2, 'done': 3, 'rejected': 4, 'cancelled': 5 };
+                return (order[a.status] || 9) - (order[b.status] || 9);
+            });
+
+            container.innerHTML = sortedRequests.map(r => {
+                const isRejected = r.status === 'rejected';
+                const isCancelled = r.status === 'cancelled';
+                const isApproved = r.status === 'approved' || r.status === 'processing';
+                const isDone = r.status === 'done';
+                const canReceive = (r.status === 'approved' || r.status === 'processing') && !r.received;
+                const isReceived = r.received || false;
+                const houseLabel = r.houseType?.label || '🏠 Nhà cứu trợ';
+                
+                return `
+                    <div class="request-item ${isRejected ? 'rejected' : ''} ${isApproved ? 'approved' : ''} ${isDone ? 'approved' : ''}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-mono text-xs font-bold text-blue-600">${r.code}</p>
+                                <p class="text-xs text-slate-500">${r.address || r.xa || ''}</p>
+                                ${r.isGps ? '<span class="text-xs text-blue-500">📡 GPS</span>' : ''}
+                                ${isReceived ? '<span class="text-xs text-emerald-500 font-bold">✅ Đã nhận hàng</span>' : ''}
+                                <p class="text-xs text-slate-500">${houseLabel} | 👤 ${r.adults || 0} người lớn</p>
+                                ${isRejected ? `
+                                    <div class="reject-note">
+                                        <i class="fa-regular fa-circle-xmark"></i> Đã bị từ chối bởi Admin
+                                        ${r.rejectReason ? `: ${r.rejectReason}` : ''}
+                                    </div>
+                                ` : ''}
+                                ${isCancelled ? `
+                                    <div class="reject-note" style="background:#fef3c7; color:#92400e;">
+                                        <i class="fa-regular fa-circle-xmark"></i> Đã bị hủy
+                                    </div>
+                                ` : ''}
+                                ${isDone ? `
+                                    <div class="approve-note">
+                                        <i class="fa-regular fa-circle-check"></i> Đã hoàn thành
+                                        ${r.receivedAt ? `: ${new Date(r.receivedAt).toLocaleString('vi-VN')}` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="status-badge ${statusMap[r.status]?.cls || 'status-pending'}">
+                                    ${statusMap[r.status]?.label || 'Chờ xử lý'}
+                                </span>
+                                ${canReceive ? `
+                                    <div class="mt-1">
+                                        <button onclick="confirmReceived('${r.id}')" class="btn-receive">
+                                            <i class="fa-regular fa-check-circle"></i> Đã nhận hàng
+                                        </button>
+                                    </div>
+                                ` : ''}
+                                ${isReceived ? `
+                                    <div class="mt-1">
+                                        <button class="btn-receive received">
+                                            <i class="fa-regular fa-check-circle"></i> Đã nhận
+                                        </button>
+                                    </div>
+                                ` : ''}
+                                ${(r.status === 'pending' || r.status === 'processing') ? `
+                                    <div class="mt-1">
+                                        <button onclick="cancelRequest('${r.id}')" class="btn-danger text-xs">
+                                            <i class="fa-regular fa-xmark"></i> Hủy
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">🕐 ${r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : 'Vừa tạo'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function cancelRequest(id) {
+            if (!confirm('Bạn có chắc muốn hủy yêu cầu này?')) return;
+            const request = AppData.getRequests().find(r => r.id === id);
+            if (request && (request.status === 'pending' || request.status === 'processing')) {
+                AppData.updateRequest(id, { 
+                    status: 'cancelled',
+                    cancelledAt: new Date().toISOString()
+                });
+                showToast('🗑️ Đã hủy yêu cầu', 'warning');
+                loadRequests();
+            } else {
+                showToast('⚠️ Không thể hủy yêu cầu này', 'error');
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                showToast('⏳ Đang đăng xuất...', 'info');
+                setTimeout(() => AppData.logout(), 500);
+            }
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = AppData.getUser();
+            if (!user) { window.location.href = 'login.html'; return; }
+            
+            loadProvinces();
+            
+            if (user.fullName) document.getElementById('reqName').value = user.fullName;
+            
+            updateHouseType();
+            
+            if (user.address) {
+                const parts = user.address.split(', ');
+                if (parts.length >= 3) {
+                    const provinceSelect = document.getElementById('reqProvince');
+                    for (let opt of provinceSelect.options) {
+                        if (opt.text === parts[parts.length - 1]) {
+                            opt.selected = true;
+                            updateDistricts();
+                            break;
+                        }
+                    }
+                    setTimeout(() => {
+                        const districtSelect = document.getElementById('reqDistrict');
+                        for (let opt of districtSelect.options) {
+                            if (opt.text === parts[parts.length - 2]) {
+                                opt.selected = true;
+                                updateWards();
+                                break;
+                            }
+                        }
+                        setTimeout(() => {
+                            const wardSelect = document.getElementById('reqWard');
+                            for (let opt of wardSelect.options) {
+                                if (opt.text === parts[parts.length - 3]) {
+                                    opt.selected = true;
+                                    updateFullAddress();
+                                    break;
+                                }
+                            }
+                        }, 100);
+                    }, 100);
+                }
+            }
+            
+            document.getElementById('reqProvince').addEventListener('change', resetAddressConfirm);
+            document.getElementById('reqDistrict').addEventListener('change', resetAddressConfirm);
+            document.getElementById('reqWard').addEventListener('change', resetAddressConfirm);
+            document.getElementById('reqStreet').addEventListener('input', resetAddressConfirm);
+            
+            initMap();
+            loadRequests();
+            
+            document.getElementById('submitBtn').disabled = true;
+            
+            window.addEventListener('dataChanged', function(e) {
+                if (e.detail.key === AppData.KEYS.REQUESTS) {
+                    loadRequests();
+                }
+            });
+            
+            setInterval(loadRequests, 10000);
+        });
+
+        window.addEventListener('resize', function() {
+            if (mapResident) setTimeout(() => mapResident.invalidateSize(), 300);
+        });
+
+        window.getGpsLocation = getGpsLocation;
+        window.useGpsLocation = useGpsLocation;
+        window.confirmAddress = confirmAddress;
+        window.submitRequest = submitRequest;
+        window.cancelRequest = cancelRequest;
+        window.navigateTo = navigateTo;
+        window.handleLogout = handleLogout;
+        window.updateDistricts = updateDistricts;
+        window.updateWards = updateWards;
+        window.updateFullAddress = updateFullAddress;
+        window.loadRequests = loadRequests;
+        window.resetAddressConfirm = resetAddressConfirm;
+        window.getSelectedAddress = getSelectedAddress;
+        window.zoomToLocation = zoomToLocation;
+        window.findLocationFromGPS = findLocationFromGPS;
+        window.confirmReceived = confirmReceived;
+        window.getHouseType = getHouseType;
+        window.updateHouseType = updateHouseType;
+    </script>
+</body>
+</html>

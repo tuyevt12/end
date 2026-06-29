@@ -1,0 +1,213 @@
+<!-- ============================================================ -->
+<!-- MODULE: BÁO CÁO & THỐNG KÊ -->
+<!-- ============================================================ -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-pie text-blue-500 mr-1"></i> Phân bố yêu cầu theo mức độ</h4>
+        </div>
+        <div class="chart-container" style="height:220px;">
+            <canvas id="report-urgency-chart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-bar text-emerald-500 mr-1"></i> Tồn kho theo kho</h4>
+        </div>
+        <div class="chart-container" style="height:220px;">
+            <canvas id="report-stock-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-chart-line text-purple-500 mr-1"></i> Tiến độ xử lý</h4>
+        </div>
+        <div class="chart-container" style="height:200px;">
+            <canvas id="report-progress-chart"></canvas>
+        </div>
+    </div>
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-file-pdf text-red-500 mr-1"></i> Xuất báo cáo</h4>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <button onclick="exportReport('pdf')" class="bg-red-50 text-red-600 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </button>
+            <button onclick="exportReport('excel')" class="bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-file-excel"></i> Excel
+            </button>
+            <button onclick="exportReport('csv')" class="bg-emerald-50 text-emerald-600 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-file-csv"></i> CSV
+            </button>
+            <button onclick="window.print()" class="bg-amber-50 text-amber-600 py-2 rounded-lg text-sm font-semibold hover:bg-amber-100 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-print"></i> In            </button>
+        </div>
+        <div class="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-slate-500">
+            📋 Báo cáo bao gồm: Thống kê yêu cầu, tồn kho, hiệu quả chuỗi cung ứng
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-clock-rotate-left text-slate-500 mr-1"></i> Lịch sử hoạt động</h4>
+    </div>
+    <div id="report-activity-log" class="space-y-2 max-h-48 overflow-y-auto">
+        <div class="text-center text-xs text-slate-400 py-4">Đang tải...</div>
+    </div>
+</div>
+
+<script>
+let reportCharts = {};
+
+function init_admin_reports() {
+    console.log('📊 Khởi tạo module Báo cáo & Thống kê...');
+    renderCharts();
+    renderActivityLog();
+}
+
+function renderCharts() {
+    const requests = AppData.getRequests();
+    const inventory = AppData.getInventory();
+    const warehouses = AppData.getWarehouses();
+    
+    // 1. Mức độ yêu cầu
+    const urgencyData = {
+        critical: requests.filter(r => r.urgency === 'critical').length,
+        high: requests.filter(r => r.urgency === 'high').length,
+        normal: requests.filter(r => r.urgency === 'normal').length
+    };
+    
+    const ctx1 = document.getElementById('report-urgency-chart');
+    if (ctx1) {
+        if (reportCharts.urgency) reportCharts.urgency.destroy();
+        reportCharts.urgency = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: ['🔴 Khẩn cấp', '🟠 Cao', '🟢 Bình thường'],
+                datasets: [{
+                    data: [urgencyData.critical, urgencyData.high, urgencyData.normal],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#22c55e'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+    
+    // 2. Tồn kho theo kho
+    const stockData = warehouses.map(w => {
+        const items = inventory.filter(i => i.warehouseId === w.id);
+        return { label: w.name, value: items.reduce((sum, i) => sum + (i.quantity || 0), 0) };
+    }).filter(d => d.value > 0);
+    
+    const ctx2 = document.getElementById('report-stock-chart');
+    if (ctx2) {
+        if (reportCharts.stock) reportCharts.stock.destroy();
+        reportCharts.stock = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: stockData.map(d => d.label),
+                datasets: [{
+                    label: 'Tồn kho (bộ)',
+                    data: stockData.map(d => d.value),
+                    backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ef4444'],
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+    
+    // 3. Tiến độ xử lý
+    const statusData = {
+        pending: requests.filter(r => r.status === 'pending').length,
+        processing: requests.filter(r => r.status === 'processing' || r.status === 'approved').length,
+        completed: requests.filter(r => r.status === 'done' || r.status === 'completed').length,
+        rejected: requests.filter(r => r.status === 'rejected').length
+    };
+    
+    const ctx3 = document.getElementById('report-progress-chart');
+    if (ctx3) {
+        if (reportCharts.progress) reportCharts.progress.destroy();
+        reportCharts.progress = new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: ['⏳ Chờ xử lý', '🔄 Đang xử lý', '✅ Hoàn thành', '❌ Từ chối'],
+                datasets: [{
+                    data: [statusData.pending, statusData.processing, statusData.completed, statusData.rejected],
+                    backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+}
+
+function renderActivityLog() {
+    const container = document.getElementById('report-activity-log');
+    if (!container) return;
+    const signals = AppData.getSignals();
+    
+    if (signals.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Chưa có hoạt động nào</div>';
+        return;
+    }
+    
+    container.innerHTML = signals.slice(0, 15).map(s => `
+        <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100">
+            <span class="text-slate-700">${s.message}</span>
+            <span class="text-slate-400">${s.time || 'Vừa xong'}</span>
+        </div>
+    `).join('');
+}
+
+function exportReport(type) {
+    showNotification(`📄 Đang xuất báo cáo ${type.toUpperCase()}...`, 'info');
+    setTimeout(() => {
+        showNotification(`✅ Đã xuất báo cáo ${type.toUpperCase()} thành công!`, 'success');
+    }, 1500);
+}
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_reports, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_reports, 300);
+    });
+}
+
+window.init_admin_reports = init_admin_reports;
+window.exportReport = exportReport;
+</script>

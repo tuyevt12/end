@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HLMS - Tình nguyện viên</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/admin-data-utils.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .volunteer-content { padding: 24px 32px; min-height: 100vh; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 16px; padding: 1.25rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #e9edf2; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+        .card-header h4 { font-size: 14px; font-weight: 700; color: #0f172a; }
+
+        #map-volunteer { height: 350px; width: 100%; border-radius: 12px; z-index: 1; }
+
+        .nav-switch { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .nav-btn { padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; }
+        .nav-btn-logout { background: #ef4444; color: white; }
+        .nav-btn-logout:hover { background: #dc2626; }
+
+        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-active { background: #dbeafe; color: #1e40af; }
+        .status-done { background: #d1fae5; color: #065f46; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        .status-report { background: #fce4ec; color: #c62828; }
+        .status-report-resolved { background: #e8f5e9; color: #2e7d32; }
+        .status-picked { background: #dbeafe; color: #1e40af; }
+
+        .mission-item {
+            padding: 12px 14px;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .mission-item:hover { border-color: #8b5cf6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .mission-item.active-mission { border-color: #8b5cf6; background: #f5f3ff; }
+        .mission-item.cancelled-mission { opacity: 0.6; border-color: #fca5a5; background: #fef2f2; }
+        .mission-item.done-mission { opacity: 0.8; border-color: #86efac; background: #f0fdf4; }
+        .mission-item.picked-mission { border-color: #3b82f6; background: #eff6ff; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+        }
+        .toast-success { background: #22c55e; }
+        .toast-error { background: #ef4444; }
+        .toast-warning { background: #f59e0b; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .toast-fade-out { opacity: 0; transform: translateY(20px); transition: 0.3s; }
+
+        .user-marker { background: #ef4444; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(239,68,68,0.4); animation: pulse-user 2s infinite; }
+        .user-marker i { color: white; font-size: 16px; }
+        @keyframes pulse-user { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 70% { box-shadow: 0 0 0 18px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+
+        .mission-marker { background: #8b5cf6; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(139,92,246,0.3); animation: pulse-mission 1.5s infinite; }
+        .mission-marker i { color: white; font-size: 14px; }
+        @keyframes pulse-mission { 0% { box-shadow: 0 0 0 0 rgba(139,92,246,0.4); } 70% { box-shadow: 0 0 0 16px rgba(139,92,246,0); } 100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); } }
+
+        .report-marker { background: #f59e0b; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(245,158,11,0.3); animation: pulse-report 2s infinite; }
+        .report-marker i { color: white; font-size: 14px; }
+        @keyframes pulse-report { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); } 70% { box-shadow: 0 0 0 16px rgba(245,158,11,0); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } }
+
+        .map-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0; border-top: 1px solid #e9edf2; margin-top: 10px; padding-top: 10px; }
+        .map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #475569; }
+        .map-legend-item .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+        .map-legend-item .dot-red { background: #ef4444; }
+        .map-legend-item .dot-purple { background: #8b5cf6; }
+        .map-legend-item .dot-amber { background: #f59e0b; }
+        .map-legend-item .dot-green { background: #22c55e; }
+
+        .empty-state { text-align: center; padding: 30px 0; color: #94a3b8; }
+        .empty-state i { font-size: 32px; display: block; margin-bottom: 8px; opacity: 0.5; }
+        .scrollable-list { max-height: 350px; overflow-y: auto; }
+        .scrollable-list::-webkit-scrollbar { width: 4px; }
+        .scrollable-list::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .scrollable-list::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+        .tab-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: #8b5cf6;
+            color: white;
+        }
+        .tab-btn:not(.active) {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .tab-btn:not(.active):hover { background: #e2e8f0; }
+
+        .notification-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-content .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+        .modal-content .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .modal-content .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .modal-content .modal-close:hover { color: #0f172a; }
+
+        .step-item {
+            display: flex;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .step-item:last-child { border-bottom: none; }
+        .step-number {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .step-content { flex: 1; }
+        .step-content .step-title {
+            font-weight: 600;
+            color: #0f172a;
+            font-size: 14px;
+        }
+        .step-content .step-desc {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        .step-content .step-desc i { color: #8b5cf6; width: 16px; }
+
+        .btn-guide {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-guide:hover { background: #7c3aed; }
+
+        .btn-route {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-route:hover { background: #16a34a; }
+
+        .btn-start {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-start:hover { background: #2563eb; }
+
+        .btn-pickup {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-pickup:hover { background: #d97706; }
+        .btn-pickup.picked { background: #22c55e; cursor: default; }
+        .btn-pickup.picked:hover { background: #22c55e; }
+
+        .btn-report {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-report:hover { background: #d97706; }
+
+        .route-info {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 8px 0;
+        }
+        .route-info .route-label {
+            font-weight: 600;
+            color: #166534;
+            font-size: 12px;
+        }
+        .route-info .route-detail {
+            color: #065f46;
+            font-size: 13px;
+        }
+
+        /* Report styles */
+        .report-item {
+            padding: 10px 14px;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .report-item:hover { border-color: #f59e0b; background: #fffbeb; }
+
+        @media (max-width: 768px) {
+            .volunteer-content { padding: 16px; }
+            #map-volunteer { height: 200px; }
+            .modal-content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="volunteer-content">
+        <!-- HEADER -->
+        <header class="flex flex-wrap justify-between items-center bg-white p-4 rounded-2xl shadow-sm mb-6 border border-slate-200/60">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">🧑‍🤝‍🧑 Tình nguyện viên</h1>
+                <p class="text-xs text-slate-500">Xin chào, <span id="vol-name">Tình nguyện viên</span>! Sẵn sàng hỗ trợ cộng đồng.</p>
+            </div>
+            <div class="nav-switch">
+                <button onclick="handleLogout()" class="nav-btn nav-btn-logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB BUTTONS -->
+        <div class="flex gap-2 mb-4 flex-wrap">
+            <button class="tab-btn active" onclick="switchTab('my')" id="tab-my">
+                📋 Nhiệm vụ của tôi
+                <span id="my-task-count" class="text-xs ml-1"></span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('available')" id="tab-available">
+                📢 Nhiệm vụ có sẵn
+                <span id="available-task-count" class="text-xs ml-1"></span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('history')" id="tab-history">
+                📜 Lịch sử
+                <span id="history-task-count" class="text-xs ml-1"></span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('reports')" id="tab-reports">
+                📌 Báo cáo cộng đồng
+                <span id="report-count" class="text-xs ml-1"></span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- DANH SÁCH NHIỆM VỤ / BÁO CÁO -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fa-regular fa-clock text-purple-500 mr-1"></i> <span id="list-title">Nhiệm vụ của tôi</span></h4>
+                    <span class="text-xs text-slate-400" id="item-count">0</span>
+                </div>
+                <div id="item-list" class="scrollable-list">
+                    <div class="empty-state">
+                        <i class="fa-regular fa-inbox"></i>
+                        <p class="text-sm">Chưa có nội dung nào</p>
+                        <p class="text-xs mt-1">Chờ cập nhật</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BẢN ĐỒ -->
+            <div class="space-y-4">
+                <div class="card p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-sm text-slate-700"><i class="fa-solid fa-map text-blue-500 mr-1"></i> Bản đồ</h4>
+                        <button onclick="getGpsLocation()" class="text-xs bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg hover:bg-emerald-100 transition">
+                            <i class="fa-solid fa-crosshairs mr-1"></i> Định vị
+                        </button>
+                    </div>
+                    <div id="map-volunteer"></div>
+                    <div class="map-legend">
+                        <span class="text-xs font-semibold text-slate-600 mr-1">📍 Chú thích:</span>
+                        <div class="map-legend-item"><span class="dot dot-red"></span>Vị trí của bạn</div>
+                        <div class="map-legend-item"><span class="dot dot-purple"></span>Điểm đến</div>
+                        <div class="map-legend-item"><span class="dot dot-amber"></span>Báo cáo cộng đồng</div>
+                        <div class="map-legend-item"><span class="dot dot-green"></span>Đường đi</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-[10px] text-slate-400" id="map-coords">Chưa có vị trí</span>
+                        <span class="text-[10px] text-slate-400" id="route-info"></span>
+                    </div>
+                </div>
+
+                <div class="card bg-blue-50 border-blue-200">
+                    <h4 class="font-bold text-sm text-blue-700 mb-2"><i class="fa-regular fa-circle-question mr-1"></i> Hướng dẫn</h4>
+                    <ul class="text-xs text-blue-700 space-y-1.5">
+                        <li class="flex items-start gap-2">📌 <span><strong>1. Nhận nhiệm vụ</strong> - Chọn nhiệm vụ có sẵn</span></li>
+                        <li class="flex items-start gap-2">📍 <span><strong>2. Xem chỉ đường</strong> - Bấm "Chỉ đường" để mở Google Maps</span></li>
+                        <li class="flex items-start gap-2">🚶 <strong>3. Đến điểm tập kết</strong> - Nhận hàng cứu trợ và bấm "Xác nhận nhận hàng"</li>
+                        <li class="flex items-start gap-2">📦 <strong>4. Giao hàng</strong> - Đến địa chỉ người dân</li>
+                        <li class="flex items-start gap-2">✅ <strong>5. Xác nhận hoàn thành</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HƯỚNG DẪN NHIỆM VỤ -->
+    <div class="modal-overlay" id="missionGuideModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="guide-title">📋 Hướng dẫn nhiệm vụ</h3>
+                    <p class="text-xs text-slate-500 mt-1" id="guide-subtitle">Chi tiết các bước thực hiện</p>
+                </div>
+                <button class="modal-close" onclick="closeGuide()">&times;</button>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-3 mb-4">
+                <div class="flex justify-between text-xs">
+                    <span class="font-semibold text-slate-700" id="guide-mission-title">Tên nhiệm vụ</span>
+                    <span class="text-slate-500" id="guide-mission-status">Trạng thái</span>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                    <span class="text-slate-500">📍 <span id="guide-mission-to">Điểm đến</span></span>
+                    <span class="text-slate-500">📦 <span id="guide-mission-qty">0 bộ</span></span>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                    <span class="text-slate-500">📌 <span id="guide-mission-pickup">Điểm tập kết</span></span>
+                    <span class="text-slate-500">⏰ <span id="guide-mission-deadline">Chưa có</span></span>
+                </div>
+            </div>
+
+            <div id="guide-steps">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">🚶 Di chuyển đến điểm tập kết</div>
+                        <div class="step-desc">
+                            <i class="fa-solid fa-location-dot"></i> Đến <strong id="step1-pickup">điểm tập kết</strong> để nhận hàng cứu trợ
+                            <div class="mt-1">
+                                <button class="btn-route" onclick="openGoogleMapsToPickup()">
+                                    <i class="fa-solid fa-map-location-dot"></i> Mở Google Maps đến điểm tập kết
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">📦 Nhận hàng cứu trợ</div>
+                        <div class="step-desc">
+                            <i class="fa-regular fa-box"></i> Kiểm tra số lượng và chất lượng hàng hóa
+                            <div class="mt-1">
+                                <button class="btn-pickup" id="confirmPickupBtn" onclick="confirmPickup()">
+                                    <i class="fa-regular fa-check-circle"></i> Xác nhận nhận hàng
+                                </button>
+                                <span class="text-xs text-slate-400 ml-2" id="pickupStatus"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">🚗 Di chuyển đến người dân</div>
+                        <div class="step-desc">
+                            <i class="fa-solid fa-location-dot"></i> Đến địa chỉ: <strong id="step3-address">địa chỉ người dân</strong>
+                            <div class="mt-1">
+                                <button class="btn-route" onclick="openGoogleMapsToDestination()">
+                                    <i class="fa-solid fa-map-location-dot"></i> Mở Google Maps đến điểm giao
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">📋 Giao hàng và xác nhận</div>
+                        <div class="step-desc">
+                            <i class="fa-regular fa-clipboard-check"></i> Giao hàng cho người dân, yêu cầu ký xác nhận
+                            <div class="mt-1">
+                                <button class="btn-start" onclick="completeCurrentMission()">
+                                    <i class="fa-regular fa-check-circle"></i> Xác nhận hoàn thành
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex gap-2">
+                <button onclick="closeGuide()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm hover:bg-slate-300 transition">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHI TIẾT BÁO CÁO -->
+    <div class="modal-overlay" id="reportDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="report-detail-title">📌 Chi tiết báo cáo</h3>
+                    <p class="text-xs text-slate-500 mt-1" id="report-detail-sub">Thông tin chi tiết báo cáo cộng đồng</p>
+                </div>
+                <button class="modal-close" onclick="closeReportDetail()">&times;</button>
+            </div>
+            <div id="reportDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- MODAL TẠO BÁO CÁO -->
+    <div class="modal-overlay" id="createReportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>📌 Tạo báo cáo cộng đồng</h3>
+                    <p class="text-xs text-slate-500 mt-1">Báo cáo tình hình tại khu vực của bạn</p>
+                </div>
+                <button class="modal-close" onclick="closeCreateReport()">&times;</button>
+            </div>
+            <form id="reportForm" onsubmit="submitReport(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Tiêu đề báo cáo <span class="text-red-500">*</span></label>
+                        <input type="text" id="report-title" class="w-full p-2 border rounded-lg text-sm" placeholder="VD: Ngập lụt tại xã Bình Mỹ" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Địa điểm <span class="text-red-500">*</span></label>
+                        <input type="text" id="report-location" class="w-full p-2 border rounded-lg text-sm" placeholder="VD: Xã Bình Mỹ, Điện Bàn, Quảng Nam" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Loại báo cáo <span class="text-red-500">*</span></label>
+                            <select id="report-type" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="flood">🌊 Ngập lụt</option>
+                                <option value="landslide">🏔️ Sạt lở</option>
+                                <option value="storm">🌀 Bão lũ</option>
+                                <option value="fire">🔥 Cháy rừng</option>
+                                <option value="other">📌 Khác</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Mức độ <span class="text-red-500">*</span></label>
+                            <select id="report-severity" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="critical">🔴 Khẩn cấp</option>
+                                <option value="high">🟠 Cao</option>
+                                <option value="normal">🟢 Bình thường</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Mô tả chi tiết <span class="text-red-500">*</span></label>
+                        <textarea id="report-desc" rows="3" class="w-full p-2 border rounded-lg text-sm" placeholder="Mô tả chi tiết tình hình..." required></textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Người báo cáo <span class="text-red-500">*</span></label>
+                        <input type="text" id="report-reporter" class="w-full p-2 border rounded-lg text-sm" placeholder="Họ và tên của bạn" required>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="getReportLocation()" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-emerald-600 transition">
+                            <i class="fa-solid fa-crosshairs"></i> Lấy vị trí GPS
+                        </button>
+                        <span class="text-xs text-slate-500 self-center" id="report-gps-info">Chưa có GPS</span>
+                        <input type="hidden" id="report-lat" value="">
+                        <input type="hidden" id="report-lng" value="">
+                    </div>
+                    <button type="submit" class="w-full bg-amber-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-amber-600 transition">
+                        <i class="fa-regular fa-paper-plane"></i> Gửi báo cáo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ===== MAP =====
+        let mapVolunteer = null;
+        let userMarker = null;
+        let userLocation = null;
+        let currentTab = 'my';
+        let missionMarkers = [];
+        let routePolyline = null;
+        let currentMissionId = null;
+        let activeMission = null;
+
+        function initMap() {
+            const container = document.getElementById('map-volunteer');
+            if (!container) return;
+            if (mapVolunteer) { mapVolunteer.invalidateSize(); return; }
+            if (typeof L === 'undefined') { setTimeout(initMap, 500); return; }
+
+            mapVolunteer = L.map('map-volunteer', { center: [16.0, 107.5], zoom: 7, zoomControl: true });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(mapVolunteer);
+
+            setTimeout(() => {
+                const user = AppData.getUser();
+                if (user && user.lat && user.lng) {
+                    const lat = parseFloat(user.lat);
+                    const lng = parseFloat(user.lng);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        updateUserMarker(lat, lng);
+                    }
+                } else {
+                    getGpsLocation();
+                }
+                loadItems();
+            }, 500);
+
+            setTimeout(() => mapVolunteer.invalidateSize(), 400);
+        }
+
+        function updateUserMarker(lat, lng) {
+            if (userMarker) mapVolunteer.removeLayer(userMarker);
+            userMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: `<i class="fa-solid fa-user"></i>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                })
+            }).addTo(mapVolunteer);
+            userMarker.bindPopup(`<b>📍 Vị trí của bạn</b><br>${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            mapVolunteer.setView([lat, lng], 12);
+            userLocation = { lat, lng };
+            document.getElementById('map-coords').textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+
+        function getGpsLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        updateUserMarker(pos.coords.latitude, pos.coords.longitude);
+                        showToast('📍 Đã xác định vị trí GPS!', 'success');
+                    },
+                    function() {
+                        showToast('❌ Không thể lấy vị trí GPS', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                showToast('❌ Trình duyệt không hỗ trợ GPS', 'error');
+            }
+        }
+
+        function getReportLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        document.getElementById('report-lat').value = pos.coords.latitude;
+                        document.getElementById('report-lng').value = pos.coords.longitude;
+                        document.getElementById('report-gps-info').textContent = `✅ ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+                        showToast('📍 Đã lấy vị trí GPS!', 'success');
+                    },
+                    function() {
+                        showToast('❌ Không thể lấy vị trí GPS', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                showToast('❌ Trình duyệt không hỗ trợ GPS', 'error');
+            }
+        }
+
+        // ===== MỞ GOOGLE MAPS CHỈ ĐƯỜNG =====
+        function openGoogleMaps(fromLat, fromLng, toLat, toLng, label) {
+            if (!fromLat || !fromLng || !toLat || !toLng) {
+                showToast('⚠️ Không đủ thông tin để chỉ đường', 'warning');
+                return;
+            }
+            
+            const url = `https://www.google.com/maps/dir/${fromLat},${fromLng}/${toLat},${toLng}`;
+            window.open(url, '_blank');
+            showToast(`📍 Đang mở Google Maps: ${label}`, 'info');
+        }
+
+        function openGoogleMapsToPickup() {
+            if (!activeMission) {
+                showToast('⚠️ Vui lòng chọn nhiệm vụ trước', 'warning');
+                return;
+            }
+            if (!userLocation) {
+                showToast('⚠️ Vui lòng định vị vị trí trước', 'warning');
+                getGpsLocation();
+                return;
+            }
+            
+            const mission = activeMission;
+            if (mission.pickupLat && mission.pickupLng) {
+                openGoogleMaps(
+                    userLocation.lat, userLocation.lng,
+                    mission.pickupLat, mission.pickupLng,
+                    'Điểm tập kết'
+                );
+            } else {
+                showToast('⚠️ Không có thông tin điểm tập kết', 'warning');
+                if (mission.pickupName) {
+                    const url = `https://www.google.com/maps/search/${encodeURIComponent(mission.pickupName)}`;
+                    window.open(url, '_blank');
+                }
+            }
+        }
+
+        function openGoogleMapsToDestination() {
+            if (!activeMission) {
+                showToast('⚠️ Vui lòng chọn nhiệm vụ trước', 'warning');
+                return;
+            }
+            if (!userLocation) {
+                showToast('⚠️ Vui lòng định vị vị trí trước', 'warning');
+                getGpsLocation();
+                return;
+            }
+            
+            const mission = activeMission;
+            if (mission.toLat && mission.toLng) {
+                openGoogleMaps(
+                    userLocation.lat, userLocation.lng,
+                    mission.toLat, mission.toLng,
+                    'Điểm giao hàng'
+                );
+            } else {
+                showToast('⚠️ Không có thông tin điểm đến', 'warning');
+                if (mission.to) {
+                    const url = `https://www.google.com/maps/search/${encodeURIComponent(mission.to)}`;
+                    window.open(url, '_blank');
+                }
+            }
+        }
+
+        // ===== TAB SWITCH =====
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-my').classList.toggle('active', tab === 'my');
+            document.getElementById('tab-available').classList.toggle('active', tab === 'available');
+            document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+            document.getElementById('tab-reports').classList.toggle('active', tab === 'reports');
+            
+            const titles = {
+                'my': 'Nhiệm vụ của tôi',
+                'available': 'Nhiệm vụ có sẵn',
+                'history': 'Lịch sử nhiệm vụ',
+                'reports': 'Báo cáo cộng đồng'
+            };
+            document.getElementById('list-title').textContent = titles[tab] || 'Nhiệm vụ';
+            loadItems();
+        }
+
+        // ===== LOAD ITEMS (Missions + Reports) =====
+        function loadItems() {
+            if (currentTab === 'reports') {
+                loadReports();
+            } else {
+                loadMissions();
+            }
+        }
+
+        // ===== MISSIONS =====
+        function loadMissions() {
+            const container = document.getElementById('item-list');
+            if (!container) return;
+
+            const missions = AppData.getMissions();
+            const user = AppData.getUser();
+            const userName = user?.fullName || 'Tình nguyện viên';
+
+            let displayMissions = [];
+            let countText = '';
+
+            missionMarkers.forEach(m => mapVolunteer.removeLayer(m));
+            missionMarkers = [];
+
+            if (currentTab === 'my') {
+                displayMissions = missions.filter(m => 
+                    m.volunteers && m.volunteers.some(v => v.name === userName) && 
+                    (m.status === 'pending' || m.status === 'active' || m.status === 'picked')
+                );
+                displayMissions.sort((a, b) => {
+                    const order = { 'active': 0, 'picked': 1, 'pending': 2 };
+                    return (order[a.status] || 9) - (order[b.status] || 9);
+                });
+                countText = `${displayMissions.length} nhiệm vụ`;
+            } else if (currentTab === 'available') {
+                displayMissions = missions.filter(m => {
+                    const volunteerCount = m.volunteers?.length || 0;
+                    const required = m.requiredVolunteers || 2;
+                    return m.status === 'pending' && volunteerCount < required && m.status !== 'cancelled';
+                });
+                countText = `${displayMissions.length} nhiệm vụ có sẵn`;
+            } else if (currentTab === 'history') {
+                displayMissions = missions.filter(m => 
+                    m.volunteers && m.volunteers.some(v => v.name === userName) && 
+                    (m.status === 'done' || m.status === 'cancelled')
+                );
+                displayMissions.sort((a, b) => {
+                    if (a.status === 'done' && b.status !== 'done') return -1;
+                    if (a.status !== 'done' && b.status === 'done') return 1;
+                    return 0;
+                });
+                countText = `${displayMissions.length} nhiệm vụ`;
+            }
+
+            document.getElementById('item-count').textContent = countText;
+
+            const myCount = missions.filter(m => m.volunteers && m.volunteers.some(v => v.name === userName) && (m.status === 'pending' || m.status === 'active' || m.status === 'picked')).length;
+            const availableCount = missions.filter(m => {
+                const volunteerCount = m.volunteers?.length || 0;
+                const required = m.requiredVolunteers || 2;
+                return m.status === 'pending' && volunteerCount < required && m.status !== 'cancelled';
+            }).length;
+            const historyCount = missions.filter(m => m.volunteers && m.volunteers.some(v => v.name === userName) && (m.status === 'done' || m.status === 'cancelled')).length;
+            
+            document.getElementById('my-task-count').textContent = myCount > 0 ? `(${myCount})` : '';
+            document.getElementById('available-task-count').textContent = availableCount > 0 ? `(${availableCount})` : '';
+            document.getElementById('history-task-count').textContent = historyCount > 0 ? `(${historyCount})` : '';
+
+            if (displayMissions.length === 0) {
+                const messages = {
+                    'my': 'Chưa có nhiệm vụ nào đang thực hiện',
+                    'available': 'Hiện không có nhiệm vụ nào',
+                    'history': 'Chưa có lịch sử nhiệm vụ'
+                };
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-regular fa-inbox"></i>
+                        <p class="text-sm">${messages[currentTab] || 'Chưa có nhiệm vụ nào'}</p>
+                        <p class="text-xs mt-1">${currentTab === 'my' ? 'Chờ điều phối viên phân công' : currentTab === 'available' ? 'Hãy kiểm tra lại sau' : 'Hoàn thành nhiệm vụ để xem lịch sử'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusMap = {
+                'pending': { label: '⏳ Chờ nhận', cls: 'status-pending' },
+                'active': { label: '🔄 Đang thực hiện', cls: 'status-active' },
+                'picked': { label: '📦 Đã nhận hàng', cls: 'status-picked' },
+                'done': { label: '✅ Hoàn thành', cls: 'status-done' },
+                'cancelled': { label: '🗑️ Đã hủy', cls: 'status-cancelled' }
+            };
+            const priorityMap = {
+                'high': '<span class="text-red-600">🔴 Khẩn</span>',
+                'normal': '<span class="text-emerald-600">🟢 Bình thường</span>'
+            };
+
+            container.innerHTML = displayMissions.map(m => {
+                const st = statusMap[m.status] || statusMap['pending'];
+                const volunteerCount = m.volunteers?.length || 0;
+                const required = m.requiredVolunteers || 2;
+                const isFull = volunteerCount >= required;
+                const priority = priorityMap[m.priority] || '🟢 Bình thường';
+                const isMyMission = m.volunteers && m.volunteers.some(v => v.name === userName);
+                const isCancelled = m.status === 'cancelled';
+                const isDone = m.status === 'done';
+                const isActive = m.status === 'active';
+                const isPicked = m.status === 'picked';
+
+                let actionButton = '';
+                if (currentTab === 'available' && m.status === 'pending' && !isFull) {
+                    actionButton = `
+                        <button onclick="acceptMission('${m.id}')" class="bg-amber-500 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-amber-600 transition">
+                            <i class="fa-regular fa-check"></i> Nhận nhiệm vụ
+                        </button>
+                    `;
+                } else if (isMyMission && isActive) {
+                    actionButton = `
+                        <button onclick="openGuide('${m.id}')" class="btn-guide">
+                            <i class="fa-regular fa-compass"></i> Hướng dẫn
+                        </button>
+                    `;
+                } else if (isMyMission && isPicked) {
+                    actionButton = `
+                        <button onclick="openGuide('${m.id}')" class="btn-guide">
+                            <i class="fa-regular fa-compass"></i> Hướng dẫn
+                        </button>
+                        <button onclick="completeMission('${m.id}')" class="bg-emerald-500 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-emerald-600 transition mt-1">
+                            <i class="fa-regular fa-check"></i> Hoàn thành
+                        </button>
+                    `;
+                } else if (isMyMission && m.status === 'pending') {
+                    actionButton = `
+                        <span class="text-xs text-amber-600 font-medium">⏳ Chờ xác nhận</span>
+                        <button onclick="openGuide('${m.id}')" class="btn-guide mt-1">
+                            <i class="fa-regular fa-compass"></i> Xem hướng dẫn
+                        </button>
+                    `;
+                } else if (isDone || isCancelled) {
+                    actionButton = `
+                        <span class="text-xs ${isDone ? 'text-emerald-600' : 'text-red-600'} font-medium">
+                            ${isDone ? '✅ Đã hoàn thành' : '🗑️ Đã hủy'}
+                        </span>
+                        <button onclick="openGuide('${m.id}')" class="btn-guide mt-1">
+                            <i class="fa-regular fa-compass"></i> Xem lại
+                        </button>
+                    `;
+                }
+
+                if (m.toLat && m.toLng) {
+                    const marker = L.marker([m.toLat, m.toLng], {
+                        icon: L.divIcon({
+                            className: 'mission-marker',
+                            html: `<i class="fa-solid fa-flag-checkered"></i>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        })
+                    }).addTo(mapVolunteer);
+                    marker.bindPopup(`<b>${m.title}</b><br>📍 ${m.to}`);
+                    missionMarkers.push(marker);
+                }
+
+                if (m.pickupLat && m.pickupLng) {
+                    const marker = L.marker([m.pickupLat, m.pickupLng], {
+                        icon: L.divIcon({
+                            className: 'mission-marker',
+                            html: `<i class="fa-solid fa-warehouse"></i>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        })
+                    }).addTo(mapVolunteer);
+                    marker.bindPopup(`<b>📌 Điểm tập kết</b><br>📍 ${m.pickupName || 'Điểm tập kết'}`);
+                    missionMarkers.push(marker);
+                }
+
+                let itemClass = 'mission-item';
+                if (isMyMission && isActive) itemClass += ' active-mission';
+                if (isCancelled) itemClass += ' cancelled-mission';
+                if (isDone) itemClass += ' done-mission';
+                if (isPicked) itemClass += ' picked-mission';
+
+                return `
+                    <div class="${itemClass}" onclick="openGuide('${m.id}')">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="font-semibold text-sm text-slate-800 ${isCancelled ? 'line-through' : ''}">${m.title}</p>
+                                    ${priority}
+                                    ${isCancelled ? '<span class="text-xs text-red-500 font-medium">🗑️ Đã hủy</span>' : ''}
+                                    ${isDone ? '<span class="text-xs text-emerald-500 font-medium">✅ Đã hoàn thành</span>' : ''}
+                                    ${isPicked ? '<span class="text-xs text-blue-500 font-medium">📦 Đã nhận hàng</span>' : ''}
+                                </div>
+                                <p class="text-xs text-slate-500">📦 ${m.qty || 0} bộ | 📍 ${m.to || 'Điểm đến'}</p>
+                                <div class="flex flex-wrap gap-3 text-xs text-slate-500 mt-0.5">
+                                    <span>📌 ${m.pickupName || 'Điểm tập kết'}</span>
+                                    <span>🧑‍🤝‍🧑 ${volunteerCount}/${required} người</span>
+                                    ${m.deadline ? `<span>⏰ Hạn: ${m.deadline}</span>` : ''}
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-1">🕐 ${m.createdAt ? new Date(m.createdAt).toLocaleString('vi-VN') : 'Vừa tạo'}</div>
+                            </div>
+                            <div class="text-right ml-4 flex flex-col items-end gap-1">
+                                <span class="status-badge ${st.cls}">${st.label}</span>
+                                ${actionButton}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ===== REPORTS =====
+        function loadReports() {
+            const container = document.getElementById('item-list');
+            if (!container) return;
+
+            const reports = AppData.getReports();
+            const user = AppData.getUser();
+            const userName = user?.fullName || 'Tình nguyện viên';
+
+            document.getElementById('item-count').textContent = `${reports.length} báo cáo`;
+            document.getElementById('report-count').textContent = reports.length > 0 ? `(${reports.length})` : '';
+
+            missionMarkers.forEach(m => mapVolunteer.removeLayer(m));
+            missionMarkers = [];
+
+            if (reports.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-regular fa-inbox"></i>
+                        <p class="text-sm">Chưa có báo cáo nào</p>
+                        <p class="text-xs mt-1">Hãy là người đầu tiên báo cáo tình hình</p>
+                        <button onclick="openCreateReport()" class="mt-3 bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-600 transition">
+                            <i class="fa-regular fa-plus"></i> Tạo báo cáo
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const severityMap = {
+                'critical': '🔴 Khẩn cấp',
+                'high': '🟠 Cao',
+                'normal': '🟢 Bình thường'
+            };
+            const typeMap = {
+                'flood': '🌊 Ngập lụt',
+                'landslide': '🏔️ Sạt lở',
+                'storm': '🌀 Bão lũ',
+                'fire': '🔥 Cháy rừng',
+                'other': '📌 Khác'
+            };
+            const statusMap = {
+                'pending': { label: '⏳ Chờ xử lý', cls: 'status-pending' },
+                'processing': { label: '🔄 Đang xử lý', cls: 'status-active' },
+                'resolved': { label: '✅ Đã giải quyết', cls: 'status-report-resolved' }
+            };
+
+            container.innerHTML = `
+                <div class="flex justify-end mb-2">
+                    <button onclick="openCreateReport()" class="bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-amber-600 transition">
+                        <i class="fa-regular fa-plus"></i> Tạo báo cáo
+                    </button>
+                </div>
+                ${reports.map(r => {
+                    const sev = severityMap[r.severity] || '🟢 Bình thường';
+                    const type = typeMap[r.type] || '📌 Khác';
+                    const st = statusMap[r.status] || statusMap['pending'];
+                    const isMine = r.reporter === userName;
+
+                    if (r.lat && r.lng) {
+                        const marker = L.marker([r.lat, r.lng], {
+                            icon: L.divIcon({
+                                className: 'report-marker',
+                                html: `<i class="fa-solid fa-triangle-exclamation"></i>`,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16]
+                            })
+                        }).addTo(mapVolunteer);
+                        marker.bindPopup(`<b>${r.title}</b><br>📍 ${r.location}`);
+                        missionMarkers.push(marker);
+                    }
+
+                    return `
+                        <div class="report-item" onclick="showReportDetail('${r.id}')">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-semibold text-sm text-slate-800">${r.title}</span>
+                                        <span class="text-xs">${type}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-0.5">📍 ${r.location}</p>
+                                    <div class="flex flex-wrap gap-2 text-xs text-slate-500 mt-0.5">
+                                        <span>${sev}</span>
+                                        <span>👤 ${r.reporter}</span>
+                                        ${isMine ? '<span class="text-xs text-blue-500">✏️ Của bạn</span>' : ''}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="status-badge ${st.cls}">${st.label}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        }
+
+        // ===== REPORT CRUD =====
+        function openCreateReport() {
+            document.getElementById('createReportModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCreateReport() {
+            document.getElementById('createReportModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
+            document.getElementById('reportForm').reset();
+            document.getElementById('report-gps-info').textContent = 'Chưa có GPS';
+        }
+
+        function submitReport(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('report-title').value.trim();
+            const location = document.getElementById('report-location').value.trim();
+            const type = document.getElementById('report-type').value;
+            const severity = document.getElementById('report-severity').value;
+            const desc = document.getElementById('report-desc').value.trim();
+            const reporter = document.getElementById('report-reporter').value.trim();
+            const lat = document.getElementById('report-lat').value;
+            const lng = document.getElementById('report-lng').value;
+
+            if (!title || !location || !desc || !reporter) {
+                showToast('⚠️ Vui lòng điền đầy đủ thông tin!', 'warning');
+                return;
+            }
+
+            const report = {
+                title: title,
+                location: location,
+                type: type,
+                typeLabel: document.getElementById('report-type').options[document.getElementById('report-type').selectedIndex].text,
+                severity: severity,
+                desc: desc,
+                reporter: reporter,
+                lat: lat || null,
+                lng: lng || null,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            AppData.addReport(report);
+            
+            AppData.addNotification({
+                title: `📌 Báo cáo cộng đồng mới: ${title}`,
+                detail: `Từ ${reporter} tại ${location}`,
+                type: 'report'
+            });
+
+            showToast('✅ Đã gửi báo cáo thành công!', 'success');
+            closeCreateReport();
+            loadItems();
+        }
+
+        function showReportDetail(id) {
+            const reports = AppData.getReports();
+            const report = reports.find(r => r.id === id);
+            if (!report) return;
+
+            const container = document.getElementById('reportDetailContent');
+            const severityMap = {
+                'critical': '🔴 Khẩn cấp',
+                'high': '🟠 Cao',
+                'normal': '🟢 Bình thường'
+            };
+            const typeMap = {
+                'flood': '🌊 Ngập lụt',
+                'landslide': '🏔️ Sạt lở',
+                'storm': '🌀 Bão lũ',
+                'fire': '🔥 Cháy rừng',
+                'other': '📌 Khác'
+            };
+            const statusMap = {
+                'pending': '⏳ Chờ xử lý',
+                'processing': '🔄 Đang xử lý',
+                'resolved': '✅ Đã giải quyết'
+            };
+
+            document.getElementById('report-detail-title').textContent = `📌 ${report.title}`;
+            document.getElementById('report-detail-sub').textContent = `Báo cáo từ ${report.reporter}`;
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="p-2 bg-slate-50 rounded">
+                            <div class="text-xs text-slate-400">Loại</div>
+                            <div class="font-semibold text-sm">${typeMap[report.type] || report.type}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded">
+                            <div class="text-xs text-slate-400">Mức độ</div>
+                            <div class="font-semibold text-sm">${severityMap[report.severity] || report.severity}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded col-span-2">
+                            <div class="text-xs text-slate-400">Địa điểm</div>
+                            <div class="font-semibold text-sm">${report.location}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded col-span-2">
+                            <div class="text-xs text-slate-400">Mô tả</div>
+                            <div class="text-sm">${report.desc}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded">
+                            <div class="text-xs text-slate-400">Người báo cáo</div>
+                            <div class="font-semibold text-sm">${report.reporter}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded">
+                            <div class="text-xs text-slate-400">Trạng thái</div>
+                            <div class="font-semibold text-sm">${statusMap[report.status] || report.status}</div>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded col-span-2">
+                            <div class="text-xs text-slate-400">Thời gian</div>
+                            <div class="text-sm">${report.createdAt ? new Date(report.createdAt).toLocaleString('vi-VN') : 'N/A'}</div>
+                        </div>
+                        ${report.lat && report.lng ? `
+                            <div class="p-2 bg-slate-50 rounded col-span-2">
+                                <div class="text-xs text-slate-400">Vị trí GPS</div>
+                                <div class="text-xs font-mono">${report.lat}, ${report.lng}</div>
+                                <a href="https://www.google.com/maps?q=${report.lat},${report.lng}" target="_blank" 
+                                   class="text-blue-500 text-xs hover:underline">Xem trên bản đồ</a>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <button onclick="closeReportDetail()" class="w-full bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+                        Đóng
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('reportDetailModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReportDetail() {
+            document.getElementById('reportDetailModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        // ===== MISSION GUIDE =====
+        function openGuide(missionId) {
+            const missions = AppData.getMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (!mission) return;
+
+            activeMission = mission;
+            currentMissionId = missionId;
+
+            document.getElementById('guide-title').textContent = `📋 ${mission.title}`;
+            document.getElementById('guide-subtitle').textContent = `Hướng dẫn chi tiết thực hiện nhiệm vụ`;
+            document.getElementById('guide-mission-title').textContent = mission.title;
+            
+            const statusMap = {
+                'pending': '⏳ Chờ nhận',
+                'active': '🔄 Đang thực hiện',
+                'picked': '📦 Đã nhận hàng',
+                'done': '✅ Hoàn thành',
+                'cancelled': '🗑️ Đã hủy'
+            };
+            document.getElementById('guide-mission-status').textContent = statusMap[mission.status] || 'Chưa xác định';
+            document.getElementById('guide-mission-to').textContent = mission.to || 'Chưa có';
+            document.getElementById('guide-mission-qty').textContent = `${mission.qty || 0} bộ`;
+            document.getElementById('guide-mission-pickup').textContent = mission.pickupName || 'Chưa có';
+            document.getElementById('guide-mission-deadline').textContent = mission.deadline || 'Chưa có';
+
+            document.getElementById('step1-pickup').textContent = mission.pickupName || 'điểm tập kết';
+            document.getElementById('step3-address').textContent = mission.to || 'địa chỉ người dân';
+
+            // Cập nhật nút xác nhận nhận hàng
+            const pickupBtn = document.getElementById('confirmPickupBtn');
+            const pickupStatus = document.getElementById('pickupStatus');
+            
+            if (mission.status === 'picked' || mission.status === 'done') {
+                pickupBtn.className = 'btn-pickup picked';
+                pickupBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Đã nhận hàng';
+                pickupBtn.disabled = true;
+                pickupStatus.textContent = '✅ Đã nhận hàng từ điểm tập kết';
+                pickupStatus.style.color = '#166534';
+            } else if (mission.status === 'active') {
+                pickupBtn.className = 'btn-pickup';
+                pickupBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Xác nhận nhận hàng';
+                pickupBtn.disabled = false;
+                pickupStatus.textContent = '⏳ Chưa nhận hàng';
+                pickupStatus.style.color = '#92400e';
+            } else {
+                pickupBtn.className = 'btn-pickup';
+                pickupBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Xác nhận nhận hàng';
+                pickupBtn.disabled = true;
+                pickupStatus.textContent = '⏳ Chờ bắt đầu nhiệm vụ';
+                pickupStatus.style.color = '#92400e';
+            }
+
+            const completeBtn = document.querySelector('#guide-steps .btn-start');
+            if (mission.status === 'done' || mission.status === 'cancelled') {
+                completeBtn.innerHTML = mission.status === 'done' ? 
+                    '<i class="fa-regular fa-check-circle"></i> Đã hoàn thành' : 
+                    '<i class="fa-regular fa-circle-xmark"></i> Đã hủy';
+                completeBtn.disabled = true;
+                completeBtn.style.opacity = '0.5';
+                completeBtn.style.cursor = 'not-allowed';
+            } else if (mission.status === 'picked') {
+                completeBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Xác nhận hoàn thành';
+                completeBtn.disabled = false;
+                completeBtn.style.opacity = '1';
+                completeBtn.style.cursor = 'pointer';
+            } else {
+                completeBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Xác nhận hoàn thành';
+                completeBtn.disabled = true;
+                completeBtn.style.opacity = '0.5';
+                completeBtn.style.cursor = 'not-allowed';
+            }
+
+            document.getElementById('missionGuideModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGuide() {
+            document.getElementById('missionGuideModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
+            if (routePolyline) {
+                mapVolunteer.removeLayer(routePolyline);
+                routePolyline = null;
+                document.getElementById('route-info').textContent = '';
+            }
+        }
+
+        function completeCurrentMission() {
+            if (currentMissionId) {
+                completeMission(currentMissionId);
+                closeGuide();
+            }
+        }
+
+        // ===== XÁC NHẬN NHẬN HÀNG =====
+        function confirmPickup() {
+            if (!currentMissionId) {
+                showToast('⚠️ Không có nhiệm vụ được chọn', 'warning');
+                return;
+            }
+            
+            if (!confirm('Xác nhận bạn đã nhận hàng tại điểm tập kết?')) return;
+            
+            const missions = AppData.getMissions();
+            const mission = missions.find(m => m.id === currentMissionId);
+            if (!mission) {
+                showToast('⚠️ Không tìm thấy nhiệm vụ', 'error');
+                return;
+            }
+            
+            if (mission.status === 'picked' || mission.status === 'done') {
+                showToast('⚠️ Nhiệm vụ đã được xác nhận nhận hàng trước đó', 'warning');
+                return;
+            }
+            
+            if (mission.status !== 'active') {
+                showToast('⚠️ Nhiệm vụ chưa bắt đầu, không thể nhận hàng', 'warning');
+                return;
+            }
+            
+            // Cập nhật trạng thái
+            mission.status = 'picked';
+            mission.pickedAt = new Date().toISOString();
+            AppData.setMissions(missions);
+            
+            // Gửi thông báo cho Admin
+            AppData.addNotification({
+                title: `📦 ${mission.title} đã được nhận hàng`,
+                detail: `Tình nguyện viên đã nhận hàng tại điểm tập kết ${mission.pickupName || 'chưa xác định'}`,
+                type: 'mission_picked'
+            });
+            
+            // Cập nhật lại modal
+            const pickupBtn = document.getElementById('confirmPickupBtn');
+            const pickupStatus = document.getElementById('pickupStatus');
+            pickupBtn.className = 'btn-pickup picked';
+            pickupBtn.innerHTML = '<i class="fa-regular fa-check-circle"></i> Đã nhận hàng';
+            pickupBtn.disabled = true;
+            pickupStatus.textContent = '✅ Đã nhận hàng từ điểm tập kết';
+            pickupStatus.style.color = '#166534';
+            
+            // Cập nhật nút hoàn thành
+            const completeBtn = document.querySelector('#guide-steps .btn-start');
+            completeBtn.disabled = false;
+            completeBtn.style.opacity = '1';
+            completeBtn.style.cursor = 'pointer';
+            
+            loadItems();
+            showToast('📦 Đã xác nhận nhận hàng thành công!', 'success');
+        }
+
+        // ===== MISSION ACTIONS =====
+        function acceptMission(id) {
+            const missions = AppData.getMissions();
+            const mission = missions.find(m => m.id === id);
+            if (!mission) return;
+
+            const user = AppData.getUser();
+            const userName = user?.fullName || 'Tình nguyện viên';
+
+            if (!mission.volunteers) mission.volunteers = [];
+            if (mission.volunteers.some(v => v.name === userName)) {
+                showToast('⚠️ Bạn đã tham gia nhiệm vụ này!', 'warning');
+                return;
+            }
+
+            if (mission.volunteers.length >= (mission.requiredVolunteers || 2)) {
+                showToast('⚠️ Nhiệm vụ đã đủ người tham gia!', 'warning');
+                return;
+            }
+
+            mission.volunteers.push({ name: userName, joinedAt: new Date().toISOString() });
+            
+            if (mission.volunteers.length >= (mission.requiredVolunteers || 2)) {
+                mission.status = 'active';
+                showToast('👥 Đã đủ người! Nhiệm vụ sẽ bắt đầu.', 'success');
+            } else {
+                mission.status = 'pending';
+                showToast(`✅ Đã đăng ký thành công! Cần thêm ${(mission.requiredVolunteers || 2) - mission.volunteers.length} người nữa.`, 'success');
+            }
+
+            AppData.setMissions(missions);
+            loadItems();
+            
+            AppData.addNotification({
+                title: `📋 ${userName} đã nhận nhiệm vụ: ${mission.title}`,
+                detail: `${mission.volunteers.length}/${mission.requiredVolunteers || 2} người đã tham gia`,
+                type: 'mission'
+            });
+        }
+
+        function completeMission(id) {
+            if (!confirm('Xác nhận hoàn thành nhiệm vụ này?')) return;
+            const missions = AppData.getMissions();
+            const mission = missions.find(m => m.id === id);
+            if (!mission) return;
+            
+            mission.status = 'done';
+            mission.completedAt = new Date().toISOString();
+            AppData.setMissions(missions);
+            loadItems();
+            showToast('🎉 Hoàn thành nhiệm vụ!', 'success');
+            AppData.updateStats({ missionsDone: 1, shelterDelivered: mission.qty || 0 });
+            
+            AppData.addNotification({
+                title: `✅ Hoàn thành nhiệm vụ: ${mission.title}`,
+                detail: `Đã giao ${mission.qty || 0} bộ đến ${mission.to || 'điểm đến'}`,
+                type: 'mission_done'
+            });
+        }
+
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                showToast('⏳ Đang đăng xuất...', 'info');
+                setTimeout(() => AppData.logout(), 500);
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : type === 'warning' ? 'toast-warning' : 'toast-info'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.className = 'toast toast-fade-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ===== INIT =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = AppData.getUser();
+            if (!user || user.role !== 'volunteer') {
+                window.location.href = 'login.html';
+                return;
+            }
+            if (user.fullName) {
+                document.getElementById('vol-name').textContent = user.fullName;
+                document.getElementById('report-reporter').value = user.fullName;
+            }
+
+            initMap();
+
+            window.addEventListener('dataChanged', function(e) {
+                if (e.detail.key === AppData.KEYS.MISSIONS || e.detail.key === AppData.KEYS.REPORTS) {
+                    loadItems();
+                }
+            });
+
+            setInterval(loadItems, 30000);
+        });
+
+        window.addEventListener('resize', function() {
+            if (mapVolunteer) setTimeout(() => mapVolunteer.invalidateSize(), 300);
+        });
+
+        // Expose functions globally
+        window.acceptMission = acceptMission;
+        window.completeMission = completeMission;
+        window.confirmPickup = confirmPickup;
+        window.getGpsLocation = getGpsLocation;
+        window.handleLogout = handleLogout;
+        window.switchTab = switchTab;
+        window.loadItems = loadItems;
+        window.loadMissions = loadMissions;
+        window.loadReports = loadReports;
+        window.openGuide = openGuide;
+        window.closeGuide = closeGuide;
+        window.completeCurrentMission = completeCurrentMission;
+        window.openGoogleMapsToPickup = openGoogleMapsToPickup;
+        window.openGoogleMapsToDestination = openGoogleMapsToDestination;
+        window.openGoogleMaps = openGoogleMaps;
+        window.updateUserMarker = updateUserMarker;
+        window.openCreateReport = openCreateReport;
+        window.closeCreateReport = closeCreateReport;
+        window.submitReport = submitReport;
+        window.getReportLocation = getReportLocation;
+        window.showReportDetail = showReportDetail;
+        window.closeReportDetail = closeReportDetail;
+    </script>
+</body>
+</html>

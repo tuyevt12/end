@@ -1,0 +1,662 @@
+<!-- ============================================================ -->
+<!-- MODULE: QUẢN LÝ NHIỆM VỤ (CHO CÁN BỘ CHÍNH PHỦ) -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-purple-600" id="msn-total">0</div>
+        <div class="label">Tổng nhiệm vụ</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="msn-pending">0</div>
+        <div class="label">Chờ nhận</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-blue-600" id="msn-active">0</div>
+        <div class="label">Đang thực hiện</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="msn-done">0</div>
+        <div class="label">Hoàn thành</div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-filter text-slate-500 mr-1"></i> Bộ lọc</h4>
+    </div>
+    <div class="flex flex-wrap gap-3 items-center">
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Trạng thái</label>
+            <select id="msn-filter-status" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="pending">⏳ Chờ nhận</option>
+                <option value="active">🔄 Đang thực hiện</option>
+                <option value="done">✅ Hoàn thành</option>
+                <option value="cancelled">🗑️ Đã hủy</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Mức độ</label>
+            <select id="msn-filter-priority" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="high">🔴 Khẩn</option>
+                <option value="normal">🟢 Bình thường</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500">TNV tham gia</label>
+            <select id="msn-filter-volunteer" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="has">👥 Có TNV tham gia</option>
+                <option value="none">👤 Chưa có TNV</option>
+                <option value="full">✅ Đã đủ người</option>
+            </select>
+        </div>
+        <button onclick="applyMissionFilters()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa-solid fa-magnifying-glass"></i> Lọc
+        </button>
+        <button onclick="resetMissionFilters()" class="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+            <i class="fa-solid fa-undo"></i> Đặt lại
+        </button>
+        <button onclick="showAddMissionModal()" class="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-purple-700 transition">
+            <i class="fa-solid fa-plus"></i> Tạo nhiệm vụ
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-regular fa-list text-purple-500 mr-1"></i> Danh sách nhiệm vụ</h4>
+        <span class="text-xs text-slate-400" id="msn-count">0 nhiệm vụ</span>
+    </div>
+    <div class="table-container">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Mã</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tiêu đề</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Điểm đến</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">SL</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">TNV</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Mức độ</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="missions-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal tạo nhiệm vụ -->
+<div id="addMissionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4"><i class="fa-solid fa-plus-circle text-purple-500 mr-2"></i> Tạo nhiệm vụ mới</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Tiêu đề <span class="text-red-500">*</span></label>
+                <input type="text" id="newMsnTitle" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập tiêu đề nhiệm vụ..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Mô tả</label>
+                <textarea id="newMsnDesc" rows="2" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Mô tả chi tiết nhiệm vụ..."></textarea>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đến <span class="text-red-500">*</span></label>
+                <input type="text" id="newMsnTo" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập địa chỉ điểm đến..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm tập kết</label>
+                <input type="text" id="newMsnPickup" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập điểm tập kết..." />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng shelter</label>
+                    <input type="number" id="newMsnQty" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Số lượng..." value="1" min="1" />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Cần bao nhiêu TNV</label>
+                    <input type="number" id="newMsnVolunteers" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Số TNV..." value="2" min="1" />
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Mức độ ưu tiên</label>
+                <select id="newMsnPriority" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="normal">🟢 Bình thường</option>
+                    <option value="high">🔴 Khẩn</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Hạn hoàn thành</label>
+                <input type="date" id="newMsnDeadline" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="addMission()" class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition">Tạo nhiệm vụ</button>
+            <button onclick="closeAddMissionModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal chi tiết nhiệm vụ -->
+<div id="missionDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-slate-800"><i class="fa-regular fa-file-lines text-purple-500 mr-2"></i> Chi tiết nhiệm vụ</h3>
+            <button onclick="closeMissionDetail()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div id="missionDetailContent"></div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// MISSIONS DATA
+// ============================================================
+let allMissions = [], filteredMissions = [];
+
+function init_admin_missions() {
+    console.log('📋 Khởi tạo module Quản lý nhiệm vụ...');
+    loadMissions();
+    
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === AppData.KEYS.MISSIONS) {
+            loadMissions();
+        }
+    });
+}
+
+function loadMissions() {
+    allMissions = AppData.getMissions();
+    console.log(`📋 Đã tải ${allMissions.length} nhiệm vụ`);
+    applyMissionFilters();
+}
+
+function applyMissionFilters() {
+    const status = document.getElementById('msn-filter-status').value;
+    const priority = document.getElementById('msn-filter-priority').value;
+    const volunteerFilter = document.getElementById('msn-filter-volunteer').value;
+    
+    filteredMissions = allMissions.filter(m => {
+        let match = true;
+        if (status && m.status !== status) match = false;
+        if (priority && m.priority !== priority) match = false;
+        if (volunteerFilter === 'has' && (!m.volunteers || m.volunteers.length === 0)) match = false;
+        if (volunteerFilter === 'none' && m.volunteers && m.volunteers.length > 0) match = false;
+        if (volunteerFilter === 'full') {
+            const required = m.requiredVolunteers || 2;
+            const count = m.volunteers?.length || 0;
+            if (count < required) match = false;
+        }
+        return match;
+    });
+    
+    renderMissions();
+    updateMissionStats();
+}
+
+function resetMissionFilters() {
+    document.getElementById('msn-filter-status').value = '';
+    document.getElementById('msn-filter-priority').value = '';
+    document.getElementById('msn-filter-volunteer').value = '';
+    applyMissionFilters();
+}
+
+function updateMissionStats() {
+    const total = allMissions.length;
+    const pending = allMissions.filter(m => m.status === 'pending').length;
+    const active = allMissions.filter(m => m.status === 'active').length;
+    const done = allMissions.filter(m => m.status === 'done').length;
+    const cancelled = allMissions.filter(m => m.status === 'cancelled').length;
+    
+    document.getElementById('msn-total').textContent = total;
+    document.getElementById('msn-pending').textContent = pending;
+    document.getElementById('msn-active').textContent = active;
+    document.getElementById('msn-done').textContent = done;
+    document.getElementById('msn-count').textContent = `${filteredMissions.length} nhiệm vụ`;
+}
+
+function renderMissions() {
+    const container = document.getElementById('missions-table-body');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (filteredMissions.length === 0) {
+        container.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 text-sm">Không có nhiệm vụ nào</td></tr>`;
+        return;
+    }
+    
+    const statusMap = {
+        'pending': { label: '⏳ Chờ nhận', cls: 'badge-warning' },
+        'active': { label: '🔄 Đang thực hiện', cls: 'badge-info' },
+        'done': { label: '✅ Hoàn thành', cls: 'badge-success' },
+        'cancelled': { label: '🗑️ Đã hủy', cls: 'badge-danger' }
+    };
+    const priorityMap = {
+        'high': { label: '🔴 Khẩn', cls: 'text-red-600 font-bold' },
+        'normal': { label: '🟢 Bình thường', cls: 'text-emerald-600' }
+    };
+    
+    filteredMissions.forEach(m => {
+        const status = statusMap[m.status] || statusMap['pending'];
+        const priority = priorityMap[m.priority] || priorityMap['normal'];
+        const volunteerCount = m.volunteers?.length || 0;
+        const required = m.requiredVolunteers || 2;
+        const isFull = volunteerCount >= required;
+        const volunteersList = m.volunteers?.map(v => v.name).join(', ') || 'Chưa có';
+        const isCancelled = m.status === 'cancelled';
+        
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-slate-100 hover:bg-slate-50 transition-colors ${isCancelled ? 'opacity-60' : ''}`;
+        
+        // Tạo các nút thao tác
+        let actionButtons = '';
+        
+        // Nút Xem chi tiết
+        actionButtons += `
+            <button onclick="showMissionDetail('${m.id}')" class="text-blue-500 hover:text-blue-700 mr-1.5 transition-colors" title="Xem chi tiết">
+                <i class="fa-regular fa-eye"></i>
+            </button>
+        `;
+        
+        // Nút Bắt đầu (chỉ hiển thị khi đang pending và có đủ TNV hoặc bắt đầu buộc)
+        if (m.status === 'pending') {
+            actionButtons += `
+                <button onclick="forceStartMission('${m.id}')" class="text-blue-500 hover:text-blue-700 mr-1.5 transition-colors" title="Bắt đầu nhiệm vụ">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+            `;
+        }
+        
+        // Nút Hoàn thành (chỉ hiển thị khi đang active)
+        if (m.status === 'active') {
+            actionButtons += `
+                <button onclick="markMissionDone('${m.id}')" class="text-emerald-500 hover:text-emerald-700 mr-1.5 transition-colors" title="Đánh dấu hoàn thành">
+                    <i class="fa-regular fa-check-circle"></i>
+                </button>
+            `;
+        }
+        
+        // Nút Hủy nhiệm vụ (chỉ hiển thị khi đang pending hoặc active)
+        if (m.status === 'pending' || m.status === 'active') {
+            actionButtons += `
+                <button onclick="cancelMission('${m.id}')" class="text-red-500 hover:text-red-700 mr-1.5 transition-colors" title="Hủy nhiệm vụ">
+                    <i class="fa-solid fa-ban"></i>
+                </button>
+            `;
+        }
+        
+        // Nút Khôi phục (chỉ hiển thị khi đã hủy)
+        if (m.status === 'cancelled') {
+            actionButtons += `
+                <button onclick="restoreMission('${m.id}')" class="text-amber-500 hover:text-amber-700 transition-colors" title="Khôi phục">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            `;
+        }
+        
+        tr.innerHTML = `
+            <td class="px-3 py-2.5 text-xs font-bold text-purple-600 whitespace-nowrap" style="font-family: 'Courier New', monospace;">${m.code || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-700 font-medium ${isCancelled ? 'line-through' : ''}">${m.title}</td>
+            <td class="px-3 py-2.5 text-xs text-slate-500">${m.to || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm font-bold text-slate-700 text-center">${m.qty || 0}</td>
+            <td class="px-3 py-2.5 text-sm text-center">
+                <span class="${isFull ? 'text-emerald-600' : volunteerCount > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    ${volunteerCount}/${required}
+                </span>
+                ${volunteerCount > 0 ? `<span class="text-[10px] text-slate-400 block truncate max-w-[100px]" title="${volunteersList}">👥 ${volunteersList}</span>` : ''}
+            </td>
+            <td class="px-3 py-2.5 ${priority.cls}">${priority.label}</td>
+            <td class="px-3 py-2.5"><span class="badge-status ${status.cls} text-xs">${status.label}</span></td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                ${actionButtons}
+            </td>
+        `;
+        container.appendChild(tr);
+    });
+}
+
+// ============================================================
+// SHOW ADD MISSION MODAL
+// ============================================================
+function showAddMissionModal() {
+    document.getElementById('addMissionModal').classList.remove('hidden');
+    document.getElementById('newMsnTitle').value = '';
+    document.getElementById('newMsnDesc').value = '';
+    document.getElementById('newMsnTo').value = '';
+    document.getElementById('newMsnPickup').value = '';
+    document.getElementById('newMsnQty').value = '1';
+    document.getElementById('newMsnVolunteers').value = '2';
+    document.getElementById('newMsnPriority').value = 'normal';
+    
+    const date = new Date();
+    date.setDate(date.getDate() + 3);
+    document.getElementById('newMsnDeadline').value = date.toISOString().split('T')[0];
+}
+
+function closeAddMissionModal() {
+    document.getElementById('addMissionModal').classList.add('hidden');
+}
+
+function addMission() {
+    const title = document.getElementById('newMsnTitle').value.trim();
+    const desc = document.getElementById('newMsnDesc').value.trim();
+    const to = document.getElementById('newMsnTo').value.trim();
+    const pickup = document.getElementById('newMsnPickup').value.trim();
+    const qty = parseInt(document.getElementById('newMsnQty').value) || 1;
+    const requiredVolunteers = parseInt(document.getElementById('newMsnVolunteers').value) || 2;
+    const priority = document.getElementById('newMsnPriority').value;
+    const deadline = document.getElementById('newMsnDeadline').value;
+    
+    if (!title || !to) {
+        showNotification('⚠️ Vui lòng nhập tiêu đề và điểm đến!', 'error');
+        return;
+    }
+    
+    const mission = {
+        title: title,
+        description: desc || 'Không có mô tả',
+        from: 'Kho Đà Nẵng',
+        to: to,
+        pickupName: pickup || 'Điểm tập kết Đà Nẵng',
+        qty: qty,
+        requiredVolunteers: requiredVolunteers,
+        priority: priority,
+        deadline: deadline || 'Chưa có hạn',
+        status: 'pending',
+        volunteers: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    AppData.addMission(mission);
+    loadMissions();
+    closeAddMissionModal();
+    showNotification(`✅ Đã tạo nhiệm vụ "${title}" thành công!`, 'success');
+}
+
+// ============================================================
+// SHOW MISSION DETAIL
+// ============================================================
+function showMissionDetail(id) {
+    const mission = allMissions.find(m => m.id === id);
+    if (!mission) return;
+    
+    const container = document.getElementById('missionDetailContent');
+    const statusMap = {
+        'pending': '⏳ Chờ nhận',
+        'active': '🔄 Đang thực hiện',
+        'done': '✅ Hoàn thành',
+        'cancelled': '🗑️ Đã hủy'
+    };
+    const priorityMap = {
+        'high': '🔴 Khẩn',
+        'normal': '🟢 Bình thường'
+    };
+    
+    const volunteers = mission.volunteers || [];
+    const volunteerCount = volunteers.length;
+    const required = mission.requiredVolunteers || 2;
+    const isFull = volunteerCount >= required;
+    const isCancelled = mission.status === 'cancelled';
+    
+    container.innerHTML = `
+        <div class="space-y-4">
+            <!-- Thông tin cơ bản -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Mã</div>
+                    <div class="font-bold text-purple-600" style="font-family: 'Courier New', monospace;">${mission.code}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Trạng thái</div>
+                    <div class="font-semibold ${isCancelled ? 'text-red-600' : mission.status === 'active' ? 'text-blue-600' : mission.status === 'done' ? 'text-emerald-600' : 'text-amber-600'}">
+                        ${statusMap[mission.status] || mission.status}
+                        ${isCancelled ? ' (Đã bị hủy)' : ''}
+                    </div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                    <div class="text-xs text-slate-400">Tiêu đề</div>
+                    <div class="font-semibold text-lg ${isCancelled ? 'line-through text-slate-400' : ''}">${mission.title}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg col-span-2">
+                    <div class="text-xs text-slate-400">Mô tả</div>
+                    <div class="text-sm text-slate-600">${mission.description || 'Không có mô tả'}</div>
+                </div>
+            </div>
+            
+            <!-- Địa điểm -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Điểm đến</div>
+                    <div class="font-semibold">${mission.to || 'N/A'}</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Điểm tập kết</div>
+                    <div class="font-semibold">${mission.pickupName || 'N/A'}</div>
+                </div>
+            </div>
+            
+            <!-- Thông số -->
+            <div class="grid grid-cols-3 gap-3">
+                <div class="p-3 bg-slate-50 rounded-lg text-center">
+                    <div class="text-xs text-slate-400">Số lượng</div>
+                    <div class="font-bold text-lg">${mission.qty || 0} bộ</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg text-center">
+                    <div class="text-xs text-slate-400">TNV</div>
+                    <div class="font-bold text-lg ${isFull ? 'text-emerald-600' : volunteerCount > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                        ${volunteerCount}/${required}
+                    </div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg text-center">
+                    <div class="text-xs text-slate-400">Mức độ</div>
+                    <div class="font-bold text-lg ${mission.priority === 'high' ? 'text-red-600' : 'text-emerald-600'}">
+                        ${priorityMap[mission.priority] || mission.priority}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hạn hoàn thành -->
+            <div class="p-3 bg-slate-50 rounded-lg">
+                <div class="text-xs text-slate-400">Hạn hoàn thành</div>
+                <div class="font-semibold">${mission.deadline || 'Chưa có hạn'}</div>
+            </div>
+            
+            <!-- Lý do hủy (nếu có) -->
+            ${isCancelled ? `
+                <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div class="text-xs text-red-600 font-semibold">🗑️ Lý do hủy</div>
+                    <div class="text-sm text-red-700 mt-1">${mission.cancelReason || 'Nhiệm vụ đã bị hủy'}</div>
+                    ${mission.cancelledAt ? `<div class="text-xs text-red-400 mt-1">${new Date(mission.cancelledAt).toLocaleString('vi-VN')}</div>` : ''}
+                </div>
+            ` : ''}
+            
+            <!-- Thông tin yêu cầu liên quan -->
+            ${mission.requestId ? `
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="text-xs text-blue-600 font-semibold">📋 Yêu cầu cứu trợ liên quan</div>
+                    <div class="text-sm text-blue-700 mt-1">Mã yêu cầu: ${mission.requestId}</div>
+                    ${mission.residentInfo ? `
+                        <div class="text-xs text-blue-600 mt-1">
+                            👤 ${mission.residentInfo.name} | 📞 ${mission.residentInfo.phone || 'N/A'}
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+            
+            <!-- Danh sách TNV tham gia -->
+            <div class="p-3 bg-slate-50 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <div class="text-xs text-slate-400">Tình nguyện viên tham gia</div>
+                    <span class="text-xs ${isFull ? 'text-emerald-600 font-bold' : 'text-amber-600'}">
+                        ${isFull ? '✅ Đã đủ người' : `Cần thêm ${required - volunteerCount} người`}
+                    </span>
+                </div>
+                ${volunteers.length === 0 ? `
+                    <div class="text-xs text-slate-400 mt-2">Chưa có tình nguyện viên nào</div>
+                ` : `
+                    <div class="space-y-1 mt-2">
+                        ${volunteers.map((v, index) => `
+                            <div class="flex items-center justify-between p-2 bg-white rounded border border-slate-200">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">🧑‍🤝‍🧑 ${v.name}</span>
+                                    <span class="text-xs text-slate-400">- ${v.joinedAt ? new Date(v.joinedAt).toLocaleString('vi-VN') : 'Vừa tham gia'}</span>
+                                </div>
+                                ${index === 0 && volunteers.length > 0 ? '<span class="text-xs text-emerald-600 font-medium">👑 Trưởng nhóm</span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            
+            <!-- Thời gian -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 bg-slate-50 rounded-lg">
+                    <div class="text-xs text-slate-400">Ngày tạo</div>
+                    <div class="text-sm">${mission.createdAt ? new Date(mission.createdAt).toLocaleString('vi-VN') : 'N/A'}</div>
+                </div>
+                ${mission.completedAt ? `
+                    <div class="p-3 bg-slate-50 rounded-lg">
+                        <div class="text-xs text-slate-400">Ngày hoàn thành</div>
+                        <div class="text-sm text-emerald-600">${new Date(mission.completedAt).toLocaleString('vi-VN')}</div>
+                    </div>
+                ` : ''}
+                ${mission.cancelledAt ? `
+                    <div class="p-3 bg-slate-50 rounded-lg">
+                        <div class="text-xs text-slate-400">Ngày hủy</div>
+                        <div class="text-sm text-red-600">${new Date(mission.cancelledAt).toLocaleString('vi-VN')}</div>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Nút hành động -->
+            <div class="flex gap-2">
+                ${mission.status === 'pending' ? `
+                    <button onclick="forceStartMission('${mission.id}')" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                        <i class="fa-solid fa-play"></i> Bắt đầu nhiệm vụ
+                    </button>
+                    <button onclick="cancelMission('${mission.id}')" class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+                        <i class="fa-solid fa-ban"></i> Hủy nhiệm vụ
+                    </button>
+                ` : ''}
+                ${mission.status === 'active' ? `
+                    <button onclick="markMissionDone('${mission.id}')" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+                        <i class="fa-regular fa-check-circle"></i> Đánh dấu hoàn thành
+                    </button>
+                    <button onclick="cancelMission('${mission.id}')" class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+                        <i class="fa-solid fa-ban"></i> Hủy nhiệm vụ
+                    </button>
+                ` : ''}
+                ${mission.status === 'cancelled' ? `
+                    <button onclick="restoreMission('${mission.id}')" class="flex-1 bg-amber-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">
+                        <i class="fa-solid fa-rotate-left"></i> Khôi phục nhiệm vụ
+                    </button>
+                ` : ''}
+                <button onclick="closeMissionDetail()" class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('missionDetailModal').classList.add('active');
+}
+
+function closeMissionDetail() {
+    document.getElementById('missionDetailModal').classList.remove('active');
+}
+
+// ============================================================
+// MISSION ACTIONS
+// ============================================================
+function forceStartMission(id) {
+    if (!confirm('Bắt đầu nhiệm vụ này ngay cả khi chưa đủ tình nguyện viên?')) return;
+    const mission = allMissions.find(m => m.id === id);
+    if (!mission) return;
+    mission.status = 'active';
+    AppData.setMissions(allMissions);
+    loadMissions();
+    showNotification('✅ Đã bắt đầu nhiệm vụ!', 'success');
+    closeMissionDetail();
+}
+
+function markMissionDone(id) {
+    if (!confirm('Xác nhận hoàn thành nhiệm vụ này?')) return;
+    const mission = allMissions.find(m => m.id === id);
+    if (!mission) return;
+    mission.status = 'done';
+    mission.completedAt = new Date().toISOString();
+    AppData.setMissions(allMissions);
+    loadMissions();
+    showNotification('🎉 Đã hoàn thành nhiệm vụ!', 'success');
+    closeMissionDetail();
+}
+
+function cancelMission(id) {
+    if (!confirm('Bạn có chắc muốn hủy nhiệm vụ này?\nHành động này sẽ hủy nhiệm vụ và thông báo cho tình nguyện viên (nếu có).')) return;
+    
+    const mission = allMissions.find(m => m.id === id);
+    if (!mission) return;
+    
+    // Thông báo cho tình nguyện viên
+    if (mission.volunteers && mission.volunteers.length > 0) {
+        const volunteerNames = mission.volunteers.map(v => v.name).join(', ');
+        AppData.addNotification({
+            title: `🗑️ Nhiệm vụ "${mission.title}" đã bị hủy`,
+            detail: `Tình nguyện viên: ${volunteerNames}`,
+            type: 'mission_cancelled'
+        });
+    }
+    
+    mission.status = 'cancelled';
+    mission.cancelledAt = new Date().toISOString();
+    mission.cancelReason = 'Nhiệm vụ đã bị hủy bởi Admin';
+    AppData.setMissions(allMissions);
+    loadMissions();
+    showNotification('🗑️ Đã hủy nhiệm vụ!', 'warning');
+    closeMissionDetail();
+}
+
+function restoreMission(id) {
+    if (!confirm('Khôi phục nhiệm vụ này?')) return;
+    const mission = allMissions.find(m => m.id === id);
+    if (!mission) return;
+    mission.status = 'pending';
+    mission.cancelledAt = null;
+    mission.cancelReason = null;
+    AppData.setMissions(allMissions);
+    loadMissions();
+    showNotification('🔄 Đã khôi phục nhiệm vụ!', 'success');
+    closeMissionDetail();
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_missions, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_missions, 300);
+    });
+}
+
+// ============================================================
+// EXPOSE
+// ============================================================
+window.init_admin_missions = init_admin_missions;
+window.applyMissionFilters = applyMissionFilters;
+window.resetMissionFilters = resetMissionFilters;
+window.showAddMissionModal = showAddMissionModal;
+window.closeAddMissionModal = closeAddMissionModal;
+window.addMission = addMission;
+window.showMissionDetail = showMissionDetail;
+window.closeMissionDetail = closeMissionDetail;
+window.forceStartMission = forceStartMission;
+window.markMissionDone = markMissionDone;
+window.cancelMission = cancelMission;
+window.restoreMission = restoreMission;
+</script>

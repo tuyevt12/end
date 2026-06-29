@@ -1,0 +1,786 @@
+<!-- ============================================================ -->
+<!-- MODULE: ĐIỀU PHỐI CỨU TRỢ (DISTRIBUTION.HTML) -->
+<!-- ============================================================ -->
+
+<!-- Thống kê -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-blue-600" id="dist-total">0</div>
+        <div class="label">Tổng phương án</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="dist-active">0</div>
+        <div class="label">Đang thực hiện</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="dist-completed">0</div>
+        <div class="label">Đã hoàn thành</div>
+    </div>
+</div>
+
+<!-- Bộ lọc phương án -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-filter text-slate-500 mr-1"></i> Bộ lọc phương án</h4>
+    </div>
+    <div class="flex flex-wrap gap-3 items-center">
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Trạng thái</label>
+            <select id="dist-filter-status" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="planning">📋 Lập kế hoạch</option>
+                <option value="active">🔄 Đang thực hiện</option>
+                <option value="completed">✅ Đã hoàn thành</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500">Nguồn</label>
+            <select id="dist-filter-source" class="px-3 py-1.5 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="manual">📝 Thủ công</option>
+                <option value="multi-source">🔄 Điều phối đa nguồn</option>
+            </select>
+        </div>
+        <button onclick="applyDistributionFilters()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa-solid fa-magnifying-glass"></i> Lọc
+        </button>
+        <button onclick="resetDistributionFilters()" class="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+            <i class="fa-solid fa-undo"></i> Đặt lại
+        </button>
+        <button onclick="showAddDistributionModal()" class="bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">
+            <i class="fa-solid fa-plus"></i> Tạo phương án
+        </button>
+        <button onclick="showManageLocationsModal()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+            <i class="fa-solid fa-location-dot"></i> Quản lý điểm
+        </button>
+    </div>
+</div>
+
+<!-- Danh sách phương án -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-truck text-amber-500 mr-1"></i> Danh sách phương án cứu trợ</h4>
+        <span class="text-xs text-slate-400" id="dist-count">0 phương án</span>
+    </div>
+    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <table class="w-full text-sm">
+            <thead style="position: sticky; top: 0; z-index: 10;">
+                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Mã</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Tiêu đề</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Điểm đến</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Shelter</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Nguồn</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Trạng thái</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="distribution-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Danh sách điểm cứu trợ -->
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-location-dot text-emerald-500 mr-1"></i> Danh sách điểm cứu trợ</h4>
+        <span class="text-xs text-slate-400" id="location-count">0 điểm</span>
+    </div>
+    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <table class="w-full text-sm">
+            <thead style="position: sticky; top: 0; z-index: 10;">
+                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Tên điểm</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Địa chỉ</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Loại</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Sức chứa</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Ngày tạo</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style="background: #f8fafc;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="location-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODALS -->
+<!-- ============================================================ -->
+
+<!-- Modal tạo phương án -->
+<div id="addDistributionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-bold mb-4">Tạo phương án cứu trợ</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Tiêu đề</label>
+                <input type="text" id="newDistTitle" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập tiêu đề..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đi</label>
+                <select id="newDistFrom" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="Kho Đà Nẵng">Kho Đà Nẵng</option>
+                    <option value="Kho Huế">Kho Huế</option>
+                    <option value="Kho Đồng Hới">Kho Đồng Hới</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đến</label>
+                <input type="text" id="newDistTo" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập điểm đến..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng shelter</label>
+                <input type="number" id="newDistShelter" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số lượng..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Chọn điểm cứu trợ (tùy chọn)</label>
+                <select id="newDistLocationSelect" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="">-- Chọn điểm có sẵn --</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="addDistribution()" class="flex-1 bg-amber-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">Tạo</button>
+            <button onclick="closeAddDistributionModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal quản lý điểm cứu trợ -->
+<div id="manageLocationsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">📍 Quản lý điểm cứu trợ</h3>
+            <button onclick="closeManageLocationsModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="bg-slate-50 p-4 rounded-lg mb-4">
+            <h4 class="text-sm font-semibold text-slate-700 mb-2">Thêm điểm cứu trợ mới</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Tên điểm</label>
+                    <input type="text" id="newLocationName" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="VD: Xã Bình Mỹ" />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Địa chỉ</label>
+                    <input type="text" id="newLocationAddress" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="VD: Quảng Nam" />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Loại</label>
+                    <select id="newLocationType" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                        <option value="shelter">🏠 Shelter</option>
+                        <option value="distribution">📦 Điểm phân phối</option>
+                        <option value="hospital">🏥 Bệnh viện</option>
+                        <option value="school">🏫 Trường học</option>
+                        <option value="community">🏘️ Cộng đồng</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Sức chứa</label>
+                    <input type="number" id="newLocationCapacity" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập sức chứa..." />
+                </div>
+            </div>
+            <div class="mt-3">
+                <button onclick="addLocation()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition w-full md:w-auto">
+                    <i class="fa-solid fa-plus"></i> Thêm điểm cứu trợ
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <div id="locationListContainer"></div>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+            <button onclick="closeManageLocationsModal()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">
+                Đóng
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div id="confirmDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+        <div class="text-center">
+            <div class="text-red-500 text-4xl mb-3">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold mb-2">Xác nhận xóa</h3>
+            <p class="text-sm text-slate-600 mb-4" id="confirmDeleteMessage">Bạn có chắc muốn xóa điểm cứu trợ này?</p>
+            <p class="text-xs text-red-500 mb-4">⚠️ Hành động này không thể hoàn tác</p>
+            <div class="flex gap-2">
+                <button onclick="confirmDeleteLocation()" class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+                    Xóa
+                </button>
+                <button onclick="closeConfirmDeleteModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">
+                    Hủy
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS cho thanh cuộn -->
+<style>
+    /* Style cho thanh cuộn */
+    .card > div[style*="max-height"]::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    .card > div[style*="max-height"]::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .card > div[style*="max-height"]::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    
+    .card > div[style*="max-height"]::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* Style cho Firefox */
+    .card > div[style*="max-height"] {
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 #f1f1f1;
+    }
+    
+    /* Đảm bảo header sticky hoạt động tốt */
+    .card > div[style*="max-height"] thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8fafc !important;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    /* Hiệu ứng hover cho hàng */
+    .card > div[style*="max-height"] tbody tr:hover {
+        background: #f8fafc !important;
+        transition: background 0.2s;
+    }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+        .card > div[style*="max-height"] {
+            max-height: 300px !important;
+        }
+        .card > div[style*="max-height"] table {
+            font-size: 12px;
+        }
+        .card > div[style*="max-height"] table th,
+        .card > div[style*="max-height"] table td {
+            padding: 6px 8px !important;
+        }
+    }
+</style>
+
+<script>
+// ============================================================
+// MAIN DISTRIBUTION MODULE
+// ============================================================
+
+let allDistributions = [];
+let filteredDistributions = [];
+let allLocations = [];
+let deleteTargetId = null;
+
+// ============================================================
+// DISTRIBUTION FUNCTIONS
+// ============================================================
+
+function init_admin_distribution() {
+    console.log('🚚 Khởi tạo module Điều phối cứu trợ...');
+    initLocations();
+    loadDistributions();
+    renderLocationTable();
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === AppData.KEYS.DISTRIBUTIONS) {
+            loadDistributions();
+        }
+        if (e.detail.key === 'locations') {
+            renderLocationTable();
+            populateLocationSelect();
+        }
+    });
+}
+
+function loadDistributions() {
+    allDistributions = AppData.getDistributions();
+    if (allDistributions.length === 0) {
+        const sampleDistributions = [
+            { id: 'dist_1', code: 'DC0001', title: 'Vận chuyển shelter đến Quảng Nam', from: 'Kho Đà Nẵng', to: 'Xã Bình Mỹ, Quảng Nam', shelter: 150, status: 'active', time: '2h trước', source: 'manual' },
+            { id: 'dist_2', code: 'DC0002', title: 'Phân phát shelter tại Huế', from: 'Kho Huế', to: 'Xã Vĩnh Hậu, TT Huế', shelter: 200, status: 'completed', time: '4h trước', source: 'manual' },
+            { id: 'dist_3', code: 'DC0003', title: 'Hỗ trợ Quảng Bình', from: 'Kho Đồng Hới', to: 'Xã Bình Thạnh, Quảng Bình', shelter: 80, status: 'planning', time: '30p trước', source: 'manual' }
+        ];
+        AppData.setDistributions(sampleDistributions);
+        allDistributions = sampleDistributions;
+    }
+    applyDistributionFilters();
+    populateLocationSelect();
+}
+
+function applyDistributionFilters() {
+    const status = document.getElementById('dist-filter-status').value;
+    const source = document.getElementById('dist-filter-source').value;
+    
+    filteredDistributions = allDistributions.filter(d => {
+        let match = true;
+        if (status && d.status !== status) match = false;
+        if (source && d.source !== source) match = false;
+        return match;
+    });
+    
+    renderDistributions();
+    updateDistributionStats();
+}
+
+function resetDistributionFilters() {
+    document.getElementById('dist-filter-status').value = '';
+    document.getElementById('dist-filter-source').value = '';
+    applyDistributionFilters();
+}
+
+function updateDistributionStats() {
+    const total = allDistributions.length;
+    const active = allDistributions.filter(d => d.status === 'active').length;
+    const completed = allDistributions.filter(d => d.status === 'completed').length;
+    
+    document.getElementById('dist-total').textContent = total;
+    document.getElementById('dist-active').textContent = active;
+    document.getElementById('dist-completed').textContent = completed;
+    document.getElementById('dist-count').textContent = `${filteredDistributions.length} phương án`;
+}
+
+function renderDistributions() {
+    const container = document.getElementById('distribution-table-body');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (filteredDistributions.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-8 text-slate-400 text-sm">Không có phương án nào</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const statusMap = {
+        'planning': { label: '📋 Lập kế hoạch', cls: 'badge-info' },
+        'active': { label: '🔄 Đang thực hiện', cls: 'badge-warning' },
+        'completed': { label: '✅ Đã hoàn thành', cls: 'badge-success' }
+    };
+    const sourceMap = {
+        'manual': '📝 Thủ công',
+        'multi-source': '🔄 Điều phối đa nguồn'
+    };
+    
+    filteredDistributions.forEach(d => {
+        const status = statusMap[d.status] || statusMap['planning'];
+        const source = sourceMap[d.source] || '📝 Thủ công';
+        
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors';
+        tr.innerHTML = `
+            <td class="px-3 py-2.5 text-xs font-bold text-amber-600 whitespace-nowrap" style="font-family: 'Courier New', monospace; font-weight: 700;">${d.code}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-700 font-medium">${d.title || d.to || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-600">${d.to || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm font-bold text-slate-700 text-center">${d.shelter}</td>
+            <td class="px-3 py-2.5 text-xs text-slate-500">${source}</td>
+            <td class="px-3 py-2.5"><span class="badge-status ${status.cls} text-xs">${status.label}</span></td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                <button onclick="updateDistributionStatus('${d.id}')" class="text-blue-500 hover:text-blue-700 mr-1.5 transition-colors" title="Đổi trạng thái">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+                ${d.source !== 'multi-source' ? `
+                    <button onclick="deleteDistribution('${d.id}')" class="text-red-500 hover:text-red-700 transition-colors" title="Xóa">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                ` : `
+                    <span class="text-xs text-slate-400" title="Từ điều phối đa nguồn">🔗</span>
+                `}
+            </td>
+        `;
+        container.appendChild(tr);
+    });
+}
+
+function showAddDistributionModal() {
+    document.getElementById('addDistributionModal').classList.remove('hidden');
+    document.getElementById('newDistTitle').value = '';
+    document.getElementById('newDistTo').value = '';
+    document.getElementById('newDistShelter').value = '';
+    populateLocationSelect();
+}
+
+function closeAddDistributionModal() {
+    document.getElementById('addDistributionModal').classList.add('hidden');
+}
+
+function addDistribution() {
+    const title = document.getElementById('newDistTitle').value.trim() || 'Phương án cứu trợ';
+    const from = document.getElementById('newDistFrom').value;
+    const to = document.getElementById('newDistTo').value.trim();
+    const shelter = parseInt(document.getElementById('newDistShelter').value);
+    
+    if (!to || !shelter) {
+        showNotification('Vui lòng nhập đầy đủ thông tin!', 'error');
+        return;
+    }
+    
+    AppData.addDistribution({
+        title: title,
+        from: from,
+        to: to,
+        shelter: shelter,
+        status: 'planning',
+        time: 'Vừa tạo',
+        source: 'manual'
+    });
+    
+    allDistributions = AppData.getDistributions();
+    applyDistributionFilters();
+    closeAddDistributionModal();
+    showNotification('✅ Đã tạo phương án cứu trợ!', 'success');
+}
+
+function updateDistributionStatus(id) {
+    const dist = allDistributions.find(d => d.id === id);
+    if (!dist) return;
+    const statuses = ['planning', 'active', 'completed'];
+    const currentIndex = statuses.indexOf(dist.status);
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    dist.status = statuses[nextIndex];
+    dist.time = 'Vừa cập nhật';
+    AppData.setDistributions(allDistributions);
+    applyDistributionFilters();
+    showNotification(`🔄 Đã cập nhật trạng thái: ${dist.status}`, 'info');
+}
+
+function deleteDistribution(id) {
+    if (!confirm('Bạn có chắc muốn xóa?')) return;
+    allDistributions = allDistributions.filter(d => d.id !== id);
+    AppData.setDistributions(allDistributions);
+    applyDistributionFilters();
+    showNotification('🗑️ Đã xóa phương án', 'warning');
+}
+
+// ============================================================
+// LOCATION MANAGEMENT FUNCTIONS
+// ============================================================
+
+function initLocations() {
+    let locations = AppData.get('locations');
+    if (!locations || locations.length === 0) {
+        const sampleLocations = [
+            { id: 'loc_1', name: 'Xã Bình Mỹ', address: 'Quảng Nam', type: 'shelter', capacity: 150, createdAt: new Date().toISOString() },
+            { id: 'loc_2', name: 'Xã Vĩnh Hậu', address: 'Thừa Thiên Huế', type: 'shelter', capacity: 200, createdAt: new Date().toISOString() },
+            { id: 'loc_3', name: 'Xã Bình Thạnh', address: 'Quảng Bình', type: 'distribution', capacity: 80, createdAt: new Date().toISOString() },
+            { id: 'loc_4', name: 'Trường THPT Phan Châu Trinh', address: 'Đà Nẵng', type: 'school', capacity: 300, createdAt: new Date().toISOString() },
+            { id: 'loc_5', name: 'Bệnh viện Đa khoa Quảng Nam', address: 'Quảng Nam', type: 'hospital', capacity: 100, createdAt: new Date().toISOString() }
+        ];
+        AppData.set('locations', sampleLocations);
+        locations = sampleLocations;
+    }
+    allLocations = locations;
+}
+
+function getLocations() {
+    return AppData.get('locations') || [];
+}
+
+function saveLocations(locations) {
+    AppData.set('locations', locations);
+    allLocations = locations;
+    renderLocationTable();
+    populateLocationSelect();
+    window.dispatchEvent(new CustomEvent('dataChanged', { 
+        detail: { key: 'locations' } 
+    }));
+}
+
+function renderLocationTable() {
+    const container = document.getElementById('location-table-body');
+    if (!container) return;
+    
+    const locations = getLocations();
+    document.getElementById('location-count').textContent = `${locations.length} điểm`;
+    
+    if (locations.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-8 text-slate-400 text-sm">Chưa có điểm cứu trợ nào</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const typeLabels = {
+        'shelter': '🏠 Shelter',
+        'distribution': '📦 Điểm phân phối',
+        'hospital': '🏥 Bệnh viện',
+        'school': '🏫 Trường học',
+        'community': '🏘️ Cộng đồng'
+    };
+
+    const typeColors = {
+        'shelter': 'bg-blue-100 text-blue-700',
+        'distribution': 'bg-amber-100 text-amber-700',
+        'hospital': 'bg-red-100 text-red-700',
+        'school': 'bg-purple-100 text-purple-700',
+        'community': 'bg-green-100 text-green-700'
+    };
+
+    container.innerHTML = locations.map(loc => `
+        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <td class="px-3 py-2.5 text-sm font-medium text-slate-700">${loc.name}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-600">${loc.address}</td>
+            <td class="px-3 py-2.5">
+                <span class="text-xs px-2 py-1 rounded-full ${typeColors[loc.type] || 'bg-gray-100 text-gray-700'}">
+                    ${typeLabels[loc.type] || loc.type}
+                </span>
+            </td>
+            <td class="px-3 py-2.5 text-sm text-center font-semibold text-slate-700">${loc.capacity || 0}</td>
+            <td class="px-3 py-2.5 text-xs text-slate-500">${new Date(loc.createdAt).toLocaleDateString('vi-VN')}</td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                <button onclick="editLocation('${loc.id}')" class="text-blue-500 hover:text-blue-700 mr-2 transition-colors" title="Sửa">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="deleteLocation('${loc.id}')" class="text-red-500 hover:text-red-700 transition-colors" title="Xóa">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function populateLocationSelect() {
+    const select = document.getElementById('newDistLocationSelect');
+    if (!select) return;
+    
+    const locations = getLocations();
+    const currentValue = select.value;
+    
+    select.innerHTML = '<option value="">-- Chọn điểm có sẵn --</option>';
+    locations.forEach(loc => {
+        const option = document.createElement('option');
+        option.value = loc.id;
+        option.textContent = `${loc.name} (${loc.address}) - ${loc.type}`;
+        select.appendChild(option);
+    });
+    
+    if (currentValue) select.value = currentValue;
+    
+    select.onchange = function() {
+        const locId = this.value;
+        if (locId) {
+            const loc = locations.find(l => l.id === locId);
+            if (loc) {
+                document.getElementById('newDistTo').value = loc.name;
+                document.getElementById('newDistShelter').value = loc.capacity || '';
+            }
+        }
+    };
+}
+
+function showManageLocationsModal() {
+    document.getElementById('manageLocationsModal').classList.remove('hidden');
+    renderLocationList();
+    document.getElementById('newLocationName').value = '';
+    document.getElementById('newLocationAddress').value = '';
+    document.getElementById('newLocationType').value = 'shelter';
+    document.getElementById('newLocationCapacity').value = '';
+}
+
+function closeManageLocationsModal() {
+    document.getElementById('manageLocationsModal').classList.add('hidden');
+}
+
+function addLocation() {
+    const name = document.getElementById('newLocationName').value.trim();
+    const address = document.getElementById('newLocationAddress').value.trim();
+    const type = document.getElementById('newLocationType').value;
+    const capacity = parseInt(document.getElementById('newLocationCapacity').value) || 0;
+
+    if (!name || !address) {
+        showNotification('Vui lòng nhập tên và địa chỉ điểm cứu trợ!', 'error');
+        return;
+    }
+
+    const newLocation = {
+        id: 'loc_' + Date.now(),
+        name: name,
+        address: address,
+        type: type,
+        capacity: capacity,
+        createdAt: new Date().toISOString()
+    };
+
+    const locations = getLocations();
+    locations.push(newLocation);
+    saveLocations(locations);
+    renderLocationList();
+    populateLocationSelect();
+    renderLocationTable();
+    document.getElementById('newLocationName').value = '';
+    document.getElementById('newLocationAddress').value = '';
+    document.getElementById('newLocationCapacity').value = '';
+    showNotification(`✅ Đã thêm điểm cứu trợ: ${name}`, 'success');
+}
+
+function deleteLocation(id) {
+    const locations = getLocations();
+    const location = locations.find(l => l.id === id);
+    if (!location) return;
+    
+    const distributions = AppData.getDistributions();
+    const isInUse = distributions.some(d => d.to && d.to.includes(location.name));
+
+    if (isInUse) {
+        showNotification('⚠️ Không thể xóa điểm này vì đang được sử dụng trong phương án cứu trợ!', 'error');
+        return;
+    }
+
+    deleteTargetId = id;
+    document.getElementById('confirmDeleteMessage').textContent = 
+        `Bạn có chắc muốn xóa điểm cứu trợ "${location.name}" (${location.address})?`;
+    document.getElementById('confirmDeleteModal').classList.remove('hidden');
+}
+
+function confirmDeleteLocation() {
+    if (!deleteTargetId) return;
+    
+    const locations = getLocations();
+    const filtered = locations.filter(l => l.id !== deleteTargetId);
+    saveLocations(filtered);
+    renderLocationList();
+    populateLocationSelect();
+    renderLocationTable();
+    closeConfirmDeleteModal();
+    showNotification('🗑️ Đã xóa điểm cứu trợ', 'warning');
+    deleteTargetId = null;
+}
+
+function closeConfirmDeleteModal() {
+    document.getElementById('confirmDeleteModal').classList.add('hidden');
+    deleteTargetId = null;
+}
+
+function renderLocationList() {
+    const container = document.getElementById('locationListContainer');
+    if (!container) return;
+    
+    const locations = getLocations();
+    
+    if (locations.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-slate-400 text-sm">
+                <i class="fa-solid fa-location-dot text-3xl block mb-2"></i>
+                Chưa có điểm cứu trợ nào
+            </div>
+        `;
+        return;
+    }
+
+    const typeLabels = {
+        'shelter': '🏠 Shelter',
+        'distribution': '📦 Điểm phân phối',
+        'hospital': '🏥 Bệnh viện',
+        'school': '🏫 Trường học',
+        'community': '🏘️ Cộng đồng'
+    };
+
+    const typeColors = {
+        'shelter': 'bg-blue-100 text-blue-700',
+        'distribution': 'bg-amber-100 text-amber-700',
+        'hospital': 'bg-red-100 text-red-700',
+        'school': 'bg-purple-100 text-purple-700',
+        'community': 'bg-green-100 text-green-700'
+    };
+
+    container.innerHTML = locations.map(loc => `
+        <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-sm text-slate-800">${loc.name}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${typeColors[loc.type] || 'bg-gray-100 text-gray-700'}">
+                        ${typeLabels[loc.type] || loc.type}
+                    </span>
+                    ${loc.capacity ? `<span class="text-xs text-slate-500">🏠 ${loc.capacity}</span>` : ''}
+                </div>
+                <div class="text-xs text-slate-500 mt-0.5">
+                    <i class="fa-solid fa-location-dot mr-1"></i> ${loc.address}
+                </div>
+            </div>
+            <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                <button onclick="editLocation('${loc.id}')" class="text-blue-500 hover:text-blue-700 p-1.5 transition-colors" title="Sửa">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="deleteLocation('${loc.id}')" class="text-red-500 hover:text-red-700 p-1.5 transition-colors" title="Xóa">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function editLocation(id) {
+    const locations = getLocations();
+    const location = locations.find(l => l.id === id);
+    if (!location) return;
+
+    document.getElementById('newLocationName').value = location.name;
+    document.getElementById('newLocationAddress').value = location.address;
+    document.getElementById('newLocationType').value = location.type;
+    document.getElementById('newLocationCapacity').value = location.capacity || '';
+
+    const filtered = locations.filter(l => l.id !== id);
+    saveLocations(filtered);
+    renderLocationList();
+    populateLocationSelect();
+    renderLocationTable();
+    showNotification(`✏️ Đang chỉnh sửa: ${location.name}`, 'info');
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_distribution, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_distribution, 300);
+    });
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS TO GLOBAL
+// ============================================================
+
+window.init_admin_distribution = init_admin_distribution;
+window.showAddDistributionModal = showAddDistributionModal;
+window.closeAddDistributionModal = closeAddDistributionModal;
+window.addDistribution = addDistribution;
+window.updateDistributionStatus = updateDistributionStatus;
+window.deleteDistribution = deleteDistribution;
+window.applyDistributionFilters = applyDistributionFilters;
+window.resetDistributionFilters = resetDistributionFilters;
+window.showManageLocationsModal = showManageLocationsModal;
+window.closeManageLocationsModal = closeManageLocationsModal;
+window.addLocation = addLocation;
+window.deleteLocation = deleteLocation;
+window.confirmDeleteLocation = confirmDeleteLocation;
+window.closeConfirmDeleteModal = closeConfirmDeleteModal;
+window.editLocation = editLocation;
+window.getLocations = getLocations;
+window.populateLocationSelect = populateLocationSelect;
+window.renderLocationTable = renderLocationTable;
+</script>

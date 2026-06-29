@@ -1,0 +1,946 @@
+<!-- ============================================================ -->
+<!-- MODULE: ĐIỀU PHỐI ĐA NGUỒN -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-blue-600" id="ms-total">0</div>
+        <div class="label">Tổng nhu cầu</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="ms-covered">0</div>
+        <div class="label">Đã đáp ứng</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-red-600" id="ms-shortage">0</div>
+        <div class="label">Còn thiếu</div>
+    </div>
+</div>
+
+<!-- ====== TÍNH TOÁN TỰ ĐỘNG ====== -->
+<div class="card mb-4 border-l-4 border-blue-500">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-robot text-blue-500 mr-1"></i> Tính toán tự động</h4>
+        <span class="text-xs text-slate-400">Hệ thống tự động đề xuất nguồn cung tối ưu</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Loại yêu cầu</label>
+                <select id="ms-request-type" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="supplement">📝 Yêu cầu bổ sung</option>
+                    <option value="new">📋 Yêu cầu mới</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Loại Shelter</label>
+                <select id="ms-shelter-type" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="Shelter 18m²">🏠 Shelter 18m² (1-2 người)</option>
+                    <option value="Shelter 24m²" selected>🏠 Shelter 24m² (3-4 người)</option>
+                    <option value="Shelter 30m²">🏠 Shelter 30m² (5-6 người)</option>
+                    <option value="Shelter 36m²">🏠 Shelter 36m² (7-8 người)</option>
+                    <option value="Shelter 48m²">🏠 Shelter 48m² (9-10 người)</option>
+                    <option value="Shelter Đặc biệt">🏠 Shelter Đặc biệt</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Ghi chú</label>
+                <input type="text" id="ms-note" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Lý do bổ sung..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng cần</label>
+                <input type="number" id="ms-need" class="w-full px-3 py-2 border rounded-lg text-sm" value="100" min="1" />
+            </div>
+        </div>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đến <span class="text-red-500">*</span></label>
+                <select id="ms-destination" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="">-- Chọn điểm đến --</option>
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1">Chọn kho hoặc điểm tập kết để gửi hàng</p>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Ưu tiên nguồn</label>
+                <select id="ms-priority" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="nearest">📍 Vị trí gần nhất</option>
+                    <option value="warehouse">🏢 Kho hàng trước</option>
+                    <option value="supplier">🤝 Nhà cung cấp trước</option>
+                    <option value="balanced">⚖️ Cân bằng</option>
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1">Sắp xếp theo vị trí gần điểm đến nhất</p>
+            </div>
+            <button onclick="calculateAuto()" class="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                <i class="fa-solid fa-calculator"></i> Tính toán tự động
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ====== CHỌN THỦ CÔNG ====== -->
+<div class="card mb-4 border-l-4 border-amber-500">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-hand-pointer text-amber-500 mr-1"></i> Chọn thủ công</h4>
+        <span class="text-xs text-slate-400">Tự chọn nguồn cung theo ý muốn</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Nguồn</label>
+            <select id="ms-manual-source" class="w-full px-3 py-2 border rounded-lg text-sm bg-white" onchange="populateManualLocations()">
+                <option value="warehouse">🏢 Kho hàng</option>
+                <option value="supplier">🤝 Nhà cung cấp</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Địa điểm</label>
+            <select id="ms-manual-location" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="">-- Chọn --</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng lấy</label>
+            <input type="number" id="ms-manual-qty" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số lượng..." min="1" />
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đến</label>
+            <select id="ms-manual-destination" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="">-- Chọn điểm đến --</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Loại Shelter</label>
+            <select id="ms-manual-shelter" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="Shelter 18m²">🏠 Shelter 18m² (1-2 người)</option>
+                <option value="Shelter 24m²" selected>🏠 Shelter 24m² (3-4 người)</option>
+                <option value="Shelter 30m²">🏠 Shelter 30m² (5-6 người)</option>
+                <option value="Shelter 36m²">🏠 Shelter 36m² (7-8 người)</option>
+                <option value="Shelter 48m²">🏠 Shelter 48m² (9-10 người)</option>
+                <option value="Shelter Đặc biệt">🏠 Shelter Đặc biệt</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Ghi chú</label>
+            <input type="text" id="ms-manual-note" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ghi chú..." />
+        </div>
+    </div>
+    <div class="flex gap-3 mt-3">
+        <button onclick="addManualSource()" class="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">
+            <i class="fa-solid fa-plus"></i> Thêm vào danh sách
+        </button>
+        <button onclick="clearManualSources()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">
+            <i class="fa-solid fa-trash"></i> Xóa tất cả
+        </button>
+        <button onclick="executeManualPlan()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+            <i class="fa-solid fa-check"></i> Tạo phương án từ danh sách
+        </button>
+    </div>
+    <div id="manual-selection-list" class="mt-3 space-y-2 max-h-32 overflow-y-auto">
+        <div class="text-center text-xs text-slate-400 py-2">Chưa có nguồn cung được chọn thủ công</div>
+    </div>
+</div>
+
+<!-- ====== HIỂN THỊ DANH SÁCH KHO & NHÀ CUNG CẤP ====== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-warehouse text-blue-500 mr-1"></i> Từ kho hàng</h4>
+            <span class="text-xs text-slate-400" id="ms-warehouse-count">0 kho</span>
+        </div>
+        <div id="ms-warehouse-list" class="space-y-2 max-h-52 overflow-y-auto">
+            <div class="text-center text-xs text-slate-400 py-6">Chọn "Tính toán tự động" để xem</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-handshake text-purple-500 mr-1"></i> Từ nhà cung cấp</h4>
+            <span class="text-xs text-slate-400" id="ms-supplier-count">0 nhà cung cấp</span>
+        </div>
+        <div id="ms-supplier-list" class="space-y-2 max-h-52 overflow-y-auto">
+            <div class="text-center text-xs text-slate-400 py-6">Chọn "Tính toán tự động" để xem</div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== KẾT QUẢ TỰ ĐỘNG ====== -->
+<div class="card" id="ms-auto-result" style="display:none;">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-check-circle text-blue-500 mr-1"></i> Kết quả tự động</h4>
+    </div>
+    <div id="ms-auto-result-content"></div>
+</div>
+
+<!-- ====== KẾT QUẢ THỦ CÔNG ====== -->
+<div class="card" id="ms-manual-result" style="display:none;">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-check-circle text-amber-500 mr-1"></i> Kết quả thủ công</h4>
+    </div>
+    <div id="ms-manual-result-content"></div>
+</div>
+
+<!-- ====== LỊCH SỬ ====== -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-clock-rotate-left text-slate-500 mr-1"></i> Lịch sử điều phối</h4>
+        <span class="text-xs text-slate-400" id="ms-history-count">0 bản ghi</span>
+    </div>
+    <div id="ms-history-list" class="space-y-2 max-h-52 overflow-y-auto">
+        <div class="text-center text-xs text-slate-400 py-6">Chưa có lịch sử điều phối</div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// DỮ LIỆU ĐỊA LÝ THỐNG NHẤT
+// ============================================================
+
+const DISTRICT_DATA_MS = {
+    'Quảng Bình': {
+        'Lệ Thủy': { lat: 17.1500, lng: 106.7200 },
+        'Quảng Ninh': { lat: 17.2600, lng: 106.5400 },
+        'Tuyên Hóa': { lat: 17.8500, lng: 106.3400 },
+        'Minh Hóa': { lat: 17.6800, lng: 105.9800 },
+        'Bố Trạch': { lat: 17.4800, lng: 106.4500 },
+        'Quảng Trạch': { lat: 17.8500, lng: 106.4200 },
+        'Ba Đồn': { lat: 17.7500, lng: 106.4200 },
+        'Đồng Hới': { lat: 17.4690, lng: 106.5970 }
+    },
+    'Quảng Trị': {
+        'Gio Linh': { lat: 16.7500, lng: 107.0800 },
+        'Vĩnh Linh': { lat: 16.8000, lng: 107.0500 },
+        'Hải Lăng': { lat: 16.6900, lng: 107.2400 },
+        'Cam Lộ': { lat: 16.7900, lng: 106.9800 },
+        'Triệu Phong': { lat: 16.7800, lng: 107.1800 }
+    },
+    'Thừa Thiên Huế': {
+        'Huế': { lat: 16.4637, lng: 107.5909 },
+        'Phong Điền': { lat: 16.5500, lng: 107.3500 },
+        'Quảng Điền': { lat: 16.6200, lng: 107.4800 }
+    },
+    'Đà Nẵng': {
+        'Hải Châu': { lat: 16.0600, lng: 108.2200 },
+        'Thanh Khê': { lat: 16.0700, lng: 108.2000 }
+    },
+    'Quảng Nam': {
+        'Tam Kỳ': { lat: 15.5667, lng: 108.4667 },
+        'Hội An': { lat: 15.8800, lng: 108.3300 },
+        'Duy Xuyên': { lat: 15.8000, lng: 108.2000 }
+    }
+};
+
+// ============================================================
+// BIẾN TOÀN CỤ
+// ============================================================
+
+let multiSourceHistory = [];
+let destinationPoints = [];
+let manualSelectedSources = [];
+
+// ============================================================
+// KHỞI TẠO
+// ============================================================
+
+function init_admin_multi_source() {
+    console.log('🔄 Khởi tạo module Điều phối đa nguồn...');
+    loadDestinations();
+    loadHistory();
+    populateManualLocations();
+    populateManualDestinations();
+    
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === AppData.KEYS.DISTRIBUTIONS || 
+            e.detail.key === AppData.KEYS.WAREHOUSES || 
+            e.detail.key === AppData.KEYS.INVENTORY || 
+            e.detail.key === AppData.KEYS.SUPPLIERS) {
+            loadDestinations();
+            loadHistory();
+            populateManualLocations();
+            populateManualDestinations();
+        }
+    });
+}
+
+// ============================================================
+// LẤY DỮ LIỆU ĐIỂM CỨU TRỢ MỞ RỘNG
+// ============================================================
+
+function getExtendedLocations() {
+    const locations = AppData.get('locations') || [];
+    return locations.map(loc => {
+        if (!loc.province) {
+            for (const [province, districts] of Object.entries(DISTRICT_DATA_MS)) {
+                for (const [district, info] of Object.entries(districts)) {
+                    if (loc.address && loc.address.includes(district)) {
+                        loc.province = province;
+                        loc.district = district;
+                        loc.lat = info.lat + (Math.random() - 0.5) * 0.02;
+                        loc.lng = info.lng + (Math.random() - 0.5) * 0.02;
+                        break;
+                    }
+                }
+                if (loc.province) break;
+            }
+            if (!loc.province) {
+                loc.province = 'Quảng Bình';
+                loc.district = 'Đồng Hới';
+                loc.lat = 17.4690 + (Math.random() - 0.5) * 0.02;
+                loc.lng = 106.5970 + (Math.random() - 0.5) * 0.02;
+            }
+        }
+        return loc;
+    });
+}
+
+// ============================================================
+// LOAD DESTINATIONS
+// ============================================================
+
+function loadDestinations() {
+    const select = document.getElementById('ms-destination');
+    if (!select) return;
+    
+    const warehouses = AppData.getWarehouses();
+    const pickupPoints = [
+        { id: 'pickup_1', name: 'Điểm tập kết Đà Nẵng', lat: 16.0644, lng: 108.2122, type: 'pickup' },
+        { id: 'pickup_2', name: 'Điểm tập kết Huế', lat: 16.4730, lng: 107.6000, type: 'pickup' },
+        { id: 'pickup_3', name: 'Điểm tập kết Đồng Hới', lat: 17.4790, lng: 106.6070, type: 'pickup' }
+    ];
+    
+    // Lấy danh sách điểm cứu trợ để lọc kho theo khu vực
+    const locations = getExtendedLocations();
+    const provinces = [...new Set(locations.map(l => l.province))];
+    
+    // Lọc kho theo khu vực có điểm cứu trợ
+    let filteredWarehouses = warehouses.filter(w => {
+        return provinces.some(p => w.name && w.name.includes(p));
+    });
+    
+    if (filteredWarehouses.length === 0) {
+        filteredWarehouses = warehouses;
+    }
+    
+    destinationPoints = [...filteredWarehouses, ...pickupPoints];
+    
+    let html = '<option value="">-- Chọn điểm đến --</option>';
+    
+    const whList = destinationPoints.filter(d => d.type !== 'pickup');
+    if (whList.length > 0) {
+        html += `<optgroup label="🏢 Kho hàng">`;
+        whList.forEach(w => {
+            html += `<option value="${w.id}" data-type="warehouse" data-name="${w.name}" data-lat="${w.lat || 0}" data-lng="${w.lng || 0}">${w.name} (${w.district || 'N/A'})</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    
+    const pickupList = destinationPoints.filter(d => d.type === 'pickup');
+    if (pickupList.length > 0) {
+        html += `<optgroup label="📦 Điểm tập kết">`;
+        pickupList.forEach(p => {
+            html += `<option value="${p.id}" data-type="pickup" data-name="${p.name}" data-lat="${p.lat || 0}" data-lng="${p.lng || 0}">${p.name}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    
+    if (whList.length === 0 && pickupList.length === 0) {
+        html += `<option value="default">🏢 Kho trung tâm</option>`;
+    }
+    
+    select.innerHTML = html;
+}
+
+function populateManualDestinations() {
+    const select = document.getElementById('ms-manual-destination');
+    if (!select) return;
+    
+    const warehouses = AppData.getWarehouses();
+    const pickupPoints = [
+        { id: 'pickup_1', name: 'Điểm tập kết Đà Nẵng', lat: 16.0644, lng: 108.2122, type: 'pickup' },
+        { id: 'pickup_2', name: 'Điểm tập kết Huế', lat: 16.4730, lng: 107.6000, type: 'pickup' },
+        { id: 'pickup_3', name: 'Điểm tập kết Đồng Hới', lat: 17.4790, lng: 106.6070, type: 'pickup' }
+    ];
+    
+    // Lấy danh sách điểm cứu trợ để lọc kho theo khu vực
+    const locations = getExtendedLocations();
+    const provinces = [...new Set(locations.map(l => l.province))];
+    
+    let filteredWarehouses = warehouses.filter(w => {
+        return provinces.some(p => w.name && w.name.includes(p));
+    });
+    
+    if (filteredWarehouses.length === 0) {
+        filteredWarehouses = warehouses;
+    }
+    
+    const allDest = [...filteredWarehouses, ...pickupPoints];
+    
+    let html = '<option value="">-- Chọn điểm đến --</option>';
+    allDest.forEach(d => {
+        const label = d.type === 'pickup' ? '📦' : '🏢';
+        html += `<option value="${d.id}" data-type="${d.type || 'warehouse'}" data-name="${d.name}">${label} ${d.name}</option>`;
+    });
+    
+    select.innerHTML = html;
+}
+
+// ============================================================
+// POPULATE MANUAL LOCATIONS
+// ============================================================
+
+function populateManualLocations() {
+    const sourceType = document.getElementById('ms-manual-source').value;
+    const select = document.getElementById('ms-manual-location');
+    if (!select) return;
+    
+    if (sourceType === 'warehouse') {
+        const warehouses = AppData.getWarehouses();
+        select.innerHTML = warehouses.map(w => 
+            `<option value="${w.id}" data-name="${w.name}" data-stock="${AppData.getStockByWarehouse(w.id) || 0}">${w.name} (Còn ${AppData.getStockByWarehouse(w.id) || 0} bộ)</option>`
+        ).join('');
+    } else {
+        const suppliers = AppData.getSuppliers().filter(s => s.status === 'active');
+        select.innerHTML = suppliers.map(s => 
+            `<option value="${s.id}" data-name="${s.name}" data-capacity="${s.capacity || 0}">${s.name} (${s.capacity || 0} bộ - ${s.leadTime || 24}h)</option>`
+        ).join('');
+    }
+}
+
+// ============================================================
+// ADD MANUAL SOURCE
+// ============================================================
+
+function addManualSource() {
+    const sourceType = document.getElementById('ms-manual-source').value;
+    const locationId = document.getElementById('ms-manual-location').value;
+    const qty = parseInt(document.getElementById('ms-manual-qty').value);
+    const select = document.getElementById('ms-manual-location');
+    const selectedOption = select.options[select.selectedIndex];
+    const name = selectedOption?.dataset?.name || 'N/A';
+    
+    if (!locationId) {
+        showNotification('⚠️ Vui lòng chọn địa điểm!', 'warning');
+        return;
+    }
+    if (!qty || qty <= 0) {
+        showNotification('⚠️ Vui lòng nhập số lượng!', 'warning');
+        return;
+    }
+    
+    if (manualSelectedSources.some(s => s.id === locationId && s.type === sourceType)) {
+        showNotification('⚠️ Địa điểm này đã được chọn!', 'warning');
+        return;
+    }
+    
+    manualSelectedSources.push({
+        id: locationId,
+        type: sourceType,
+        name: name,
+        amount: qty
+    });
+    
+    renderManualSources();
+    document.getElementById('ms-manual-qty').value = '';
+    showNotification(`✅ Đã thêm ${name} (${qty} bộ) vào danh sách`, 'success');
+}
+
+function removeManualSource(index) {
+    manualSelectedSources.splice(index, 1);
+    renderManualSources();
+}
+
+function clearManualSources() {
+    if (manualSelectedSources.length === 0) return;
+    if (!confirm('Xóa tất cả nguồn cung đã chọn?')) return;
+    manualSelectedSources = [];
+    renderManualSources();
+    showNotification('🗑️ Đã xóa tất cả', 'warning');
+}
+
+function renderManualSources() {
+    const container = document.getElementById('manual-selection-list');
+    if (!container) return;
+    
+    if (manualSelectedSources.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-slate-400 py-2">Chưa có nguồn cung được chọn thủ công</div>';
+        return;
+    }
+    
+    container.innerHTML = manualSelectedSources.map((s, index) => `
+        <div class="flex justify-between items-center p-2 bg-amber-50 rounded-lg border border-amber-200">
+            <div>
+                <span class="text-sm font-medium">${s.type === 'warehouse' ? '🏢' : '🤝'} ${s.name}</span>
+                <span class="text-sm font-bold text-amber-600 ml-2">${s.amount} bộ</span>
+            </div>
+            <button onclick="removeManualSource(${index})" class="text-red-500 hover:text-red-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// ============================================================
+// TÍNH TOÁN TỰ ĐỘNG
+// ============================================================
+
+function calculateAuto() {
+    const need = parseInt(document.getElementById('ms-need').value) || 0;
+    const note = document.getElementById('ms-note').value.trim() || 'Yêu cầu bổ sung';
+    const requestType = document.getElementById('ms-request-type').value;
+    const shelterType = document.getElementById('ms-shelter-type').value;
+    const destinationId = document.getElementById('ms-destination').value;
+    const priority = document.getElementById('ms-priority').value;
+    
+    if (need <= 0) {
+        showNotification('⚠️ Vui lòng nhập số lượng cần (lớn hơn 0)!', 'warning');
+        document.getElementById('ms-need').focus();
+        return;
+    }
+    
+    if (!destinationId) {
+        showNotification('⚠️ Vui lòng chọn điểm đến!', 'warning');
+        document.getElementById('ms-destination').focus();
+        return;
+    }
+    
+    const dest = destinationPoints.find(d => d.id === destinationId);
+    const destinationName = dest ? dest.name : 'Kho trung tâm';
+    const destinationType = dest ? (dest.type === 'pickup' ? 'Điểm tập kết' : 'Kho hàng') : 'Kho hàng';
+    const destLat = dest?.lat || 0;
+    const destLng = dest?.lng || 0;
+    
+    const warehouses = AppData.getWarehouses();
+    const inventory = AppData.getInventory();
+    const suppliers = AppData.getSuppliers();
+    
+    // Lấy danh sách điểm cứu trợ để lọc kho theo khu vực
+    const locations = getExtendedLocations();
+    const provinces = [...new Set(locations.map(l => l.province))];
+    
+    // Lọc kho theo khu vực có điểm cứu trợ
+    let filteredWarehouses = warehouses.filter(w => {
+        return provinces.some(p => w.name && w.name.includes(p));
+    });
+    
+    if (filteredWarehouses.length === 0) {
+        filteredWarehouses = warehouses;
+    }
+    
+    // Lấy tồn kho
+    let warehouseStock = filteredWarehouses.map(w => {
+        const items = inventory.filter(i => i.warehouseId === w.id && i.name === shelterType);
+        const total = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+        const dist = destLat && destLng && w.lat && w.lng ? 
+            Math.sqrt(Math.pow(w.lat - destLat, 2) + Math.pow(w.lng - destLng, 2)) * 111 : 999;
+        return { ...w, stock: total, distance: dist };
+    }).filter(w => w.stock > 0);
+    
+    // Lấy nhà cung cấp
+    let activeSuppliers = suppliers.filter(s => s.status === 'active' && (s.capacity || 0) > 0)
+        .map(s => {
+            const dist = destLat && destLng && s.lat && s.lng ? 
+                Math.sqrt(Math.pow(s.lat - destLat, 2) + Math.pow(s.lng - destLng, 2)) * 111 : 999;
+            return { ...s, distance: dist };
+        });
+    
+    // Sắp xếp theo ưu tiên
+    if (priority === 'nearest') {
+        warehouseStock.sort((a, b) => a.distance - b.distance);
+        activeSuppliers.sort((a, b) => a.distance - b.distance);
+    } else if (priority === 'warehouse') {
+        warehouseStock.sort((a, b) => b.stock - a.stock);
+        activeSuppliers.sort((a, b) => b.capacity - a.capacity);
+    } else if (priority === 'supplier') {
+        activeSuppliers.sort((a, b) => (b.capacity || 0) - (a.capacity || 0));
+        warehouseStock.sort((a, b) => b.stock - a.stock);
+    } else {
+        warehouseStock.sort((a, b) => b.stock - a.stock);
+        activeSuppliers.sort((a, b) => (b.capacity || 0) - (a.capacity || 0));
+    }
+    
+    // Hiển thị danh sách
+    renderWarehouseList(warehouseStock);
+    renderSupplierList(activeSuppliers);
+    
+    // Tính toán phân bổ
+    let remaining = need;
+    let plan = [];
+    
+    if (priority === 'supplier') {
+        for (let s of activeSuppliers) {
+            if (remaining <= 0) break;
+            const take = Math.min(s.capacity || 0, remaining);
+            if (take > 0) {
+                plan.push({ source: 'supplier', name: s.name, amount: take, leadTime: s.leadTime || 24, capacity: s.capacity, distance: s.distance });
+                remaining -= take;
+            }
+        }
+        for (let w of warehouseStock) {
+            if (remaining <= 0) break;
+            const take = Math.min(w.stock, remaining);
+            if (take > 0) {
+                plan.push({ source: 'warehouse', name: w.name, amount: take, stock: w.stock, distance: w.distance });
+                remaining -= take;
+            }
+        }
+    } else {
+        for (let w of warehouseStock) {
+            if (remaining <= 0) break;
+            const take = Math.min(w.stock, remaining);
+            if (take > 0) {
+                plan.push({ source: 'warehouse', name: w.name, amount: take, stock: w.stock, distance: w.distance });
+                remaining -= take;
+            }
+        }
+        for (let s of activeSuppliers) {
+            if (remaining <= 0) break;
+            const take = Math.min(s.capacity || 0, remaining);
+            if (take > 0) {
+                plan.push({ source: 'supplier', name: s.name, amount: take, leadTime: s.leadTime || 24, capacity: s.capacity, distance: s.distance });
+                remaining -= take;
+            }
+        }
+    }
+    
+    const resultDiv = document.getElementById('ms-auto-result');
+    const contentDiv = document.getElementById('ms-auto-result-content');
+    
+    if (plan.length === 0) {
+        resultDiv.style.display = 'none';
+        showNotification('❌ Không tìm thấy nguồn cung nào!', 'error');
+        return;
+    }
+    
+    resultDiv.style.display = 'block';
+    const covered = need - remaining;
+    const percent = Math.round((covered / need) * 100);
+    
+    const priorityLabel = priority === 'nearest' ? '📍 Gần nhất' : 
+                          priority === 'warehouse' ? '🏢 Kho hàng trước' : 
+                          priority === 'supplier' ? '🤝 Nhà cung cấp trước' : '⚖️ Cân bằng';
+    
+    contentDiv.innerHTML = `
+        <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div><span class="text-xs text-slate-400">Yêu cầu</span><span class="font-semibold text-sm text-slate-700"> ${requestType === 'supplement' ? '📝 Bổ sung' : '📋 Mới'}</span></div>
+                <div><span class="text-xs text-slate-400">Loại Shelter</span><span class="font-semibold text-sm text-slate-700"> 🏠 ${shelterType}</span></div>
+                <div><span class="text-xs text-slate-400">Điểm đến</span><span class="font-semibold text-sm text-slate-700"> ${destinationName}</span></div>
+                <div><span class="text-xs text-slate-400">Ghi chú</span><span class="text-sm text-slate-600"> ${note}</span></div>
+                <div><span class="text-xs text-slate-400">Nhu cầu</span><span class="font-bold text-sm text-blue-600"> ${need} bộ</span></div>
+                <div><span class="text-xs text-slate-400">Ưu tiên</span><span class="text-sm text-slate-600 font-medium"> ${priorityLabel}</span></div>
+                <div><span class="text-xs text-slate-400">📍 Điểm cứu trợ</span><span class="font-semibold text-sm text-indigo-600"> ${locations.length} điểm</span></div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div class="bg-emerald-50 p-3 rounded-lg text-center border border-emerald-200">
+                <p class="text-xs text-emerald-600">Đã đáp ứng</p>
+                <p class="text-xl font-bold text-emerald-700">${covered} / ${need}</p>
+                <p class="text-xs text-emerald-500">${percent}%</p>
+            </div>
+            <div class="bg-amber-50 p-3 rounded-lg text-center border border-amber-200">
+                <p class="text-xs text-amber-600">Còn thiếu</p>
+                <p class="text-xl font-bold text-amber-700">${remaining}</p>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-lg text-center border border-blue-200">
+                <p class="text-xs text-blue-600">Nguồn cung</p>
+                <p class="text-xl font-bold text-blue-700">${plan.length}</p>
+                <p class="text-xs text-blue-500">${plan.filter(p => p.source === 'warehouse').length} kho, ${plan.filter(p => p.source === 'supplier').length} NCC</p>
+            </div>
+        </div>
+        <div class="space-y-2">
+            ${plan.map((p, index) => `
+                <div class="flex justify-between items-center p-3 ${p.source === 'supplier' && priority === 'supplier' ? 'bg-purple-50 border-purple-300' : 'bg-white'} rounded-lg border ${p.source === 'supplier' && priority === 'supplier' ? 'border-purple-300' : 'border-slate-200'} hover:shadow-sm transition">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold ${p.source === 'supplier' && priority === 'supplier' ? 'text-purple-600 bg-purple-200' : 'text-slate-400 bg-slate-100'} px-2 py-1 rounded">#${index + 1}</span>
+                        <div>
+                            <span class="font-medium text-sm">${p.source === 'warehouse' ? '🏢' : '🤝'} ${p.name}</span>
+                            ${p.source === 'supplier' ? `<span class="text-xs text-slate-400 ml-2">⏱️ ${p.leadTime}h</span>` : ''}
+                            ${p.source === 'warehouse' ? `<span class="text-xs text-slate-400 ml-2">📦 Tồn: ${p.stock} bộ</span>` : ''}
+                            ${p.distance ? `<span class="text-xs text-slate-400 ml-2">📍 ${p.distance.toFixed(1)} km</span>` : ''}
+                            ${priority === 'supplier' && p.source === 'supplier' ? '<span class="text-xs text-purple-600 font-semibold ml-2">⭐ Ưu tiên</span>' : ''}
+                            ${priority === 'warehouse' && p.source === 'warehouse' ? '<span class="text-xs text-blue-600 font-semibold ml-2">⭐ Ưu tiên</span>' : ''}
+                        </div>
+                    </div>
+                    <span class="font-bold text-blue-600">${p.amount} bộ</span>
+                </div>
+            `).join('')}
+        </div>
+        ${remaining > 0 ? `
+            <div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-200 text-center">
+                <p class="text-sm text-red-600 font-medium">⚠️ Còn thiếu ${remaining} bộ. Vui lòng kích hoạt hợp đồng dự phòng.</p>
+            </div>
+        ` : `
+            <div class="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                <p class="text-sm text-emerald-600 font-medium">✅ Đã đáp ứng đủ nhu cầu!</p>
+            </div>
+        `}
+        <button onclick="approveAutoPlan('${note}', ${need}, ${covered}, ${remaining}, '${destinationId}', '${destinationName}', '${shelterType}')" 
+            class="mt-3 w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa-regular fa-check-circle"></i> Phê duyệt & Tạo phương án
+        </button>
+    `;
+    
+    updateStats(need, covered, remaining);
+}
+
+// ============================================================
+// THỰC HIỆN PHƯƠNG ÁN THỦ CÔNG
+// ============================================================
+
+function executeManualPlan() {
+    if (manualSelectedSources.length === 0) {
+        showNotification('⚠️ Vui lòng thêm nguồn cung vào danh sách!', 'warning');
+        return;
+    }
+    
+    const destinationId = document.getElementById('ms-manual-destination').value;
+    const shelterType = document.getElementById('ms-manual-shelter').value;
+    const note = document.getElementById('ms-manual-note').value.trim() || 'Chọn thủ công';
+    
+    if (!destinationId) {
+        showNotification('⚠️ Vui lòng chọn điểm đến!', 'warning');
+        document.getElementById('ms-manual-destination').focus();
+        return;
+    }
+    
+    const dest = destinationPoints.find(d => d.id === destinationId);
+    const destinationName = dest ? dest.name : 'Kho trung tâm';
+    const destinationType = dest ? (dest.type === 'pickup' ? 'Điểm tập kết' : 'Kho hàng') : 'Kho hàng';
+    
+    let totalNeed = manualSelectedSources.reduce((sum, s) => sum + s.amount, 0);
+    
+    const resultDiv = document.getElementById('ms-manual-result');
+    const contentDiv = document.getElementById('ms-manual-result-content');
+    
+    resultDiv.style.display = 'block';
+    
+    contentDiv.innerHTML = `
+        <div class="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div><span class="text-xs text-slate-400">Loại Shelter</span><span class="font-semibold text-sm text-slate-700"> 🏠 ${shelterType}</span></div>
+                <div><span class="text-xs text-slate-400">Điểm đến</span><span class="font-semibold text-sm text-slate-700"> ${destinationName} (${destinationType})</span></div>
+                <div><span class="text-xs text-slate-400">Ghi chú</span><span class="text-sm text-slate-600"> ${note}</span></div>
+                <div><span class="text-xs text-slate-400">Tổng nhu cầu</span><span class="font-bold text-sm text-amber-600"> ${totalNeed} bộ</span></div>
+                <div><span class="text-xs text-slate-400">📍 Điểm cứu trợ</span><span class="font-semibold text-sm text-indigo-600"> ${getExtendedLocations().length} điểm</span></div>
+            </div>
+        </div>
+        <div class="space-y-2">
+            ${manualSelectedSources.map((s, index) => `
+                <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-amber-200 hover:shadow-sm transition">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded">✋ #${index + 1}</span>
+                        <div>
+                            <span class="font-medium text-sm">${s.type === 'warehouse' ? '🏢' : '🤝'} ${s.name}</span>
+                            <span class="text-xs text-amber-600 font-semibold ml-2">(Chọn thủ công)</span>
+                        </div>
+                    </div>
+                    <span class="font-bold text-amber-600">${s.amount} bộ</span>
+                </div>
+            `).join('')}
+        </div>
+        <button onclick="approveManualPlan('${note}', ${totalNeed}, '${destinationId}', '${destinationName}', '${shelterType}')" 
+            class="mt-3 w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+            <i class="fa-regular fa-check-circle"></i> Phê duyệt & Tạo phương án
+        </button>
+    `;
+    
+    updateStats(totalNeed, totalNeed, 0);
+}
+
+// ============================================================
+// PHÊ DUYỆT TỰ ĐỘNG
+// ============================================================
+
+function approveAutoPlan(note, need, covered, remaining, destinationId, destinationName, shelterType) {
+    if (!confirm('Xác nhận phê duyệt phương án tự động?')) return;
+    
+    const dest = destinationPoints.find(d => d.id === destinationId);
+    const destType = dest ? (dest.type === 'pickup' ? 'Điểm tập kết' : 'Kho hàng') : 'Kho hàng';
+    const locations = getExtendedLocations();
+    
+    const distribution = {
+        id: 'dist_' + Date.now(),
+        code: 'DC' + String(Math.floor(Math.random() * 10000)).padStart(4, '0'),
+        title: `📋 Tự động: ${note || 'Bổ sung shelter'}`,
+        from: 'Điều phối đa nguồn (Tự động)',
+        to: destinationName || 'Kho trung tâm',
+        destinationId: destinationId,
+        destinationType: destType,
+        shelter: need,
+        shelterType: shelterType,
+        status: 'planning',
+        note: note || 'Yêu cầu bổ sung từ module Điều phối đa nguồn (Tự động)',
+        covered: covered,
+        remaining: remaining,
+        source: 'multi-source',
+        fromMultiSource: true,
+        method: 'auto',
+        totalLocations: locations.length,
+        createdAt: new Date().toISOString()
+    };
+    
+    AppData.addDistribution(distribution);
+    multiSourceHistory.push(distribution);
+    loadHistory();
+    
+    document.getElementById('ms-auto-result').style.display = 'none';
+    showNotification(`✅ Đã phê duyệt phương án tự động!`, 'success');
+}
+
+// ============================================================
+// PHÊ DUYỆT THỦ CÔNG
+// ============================================================
+
+function approveManualPlan(note, totalNeed, destinationId, destinationName, shelterType) {
+    if (!confirm('Xác nhận phê duyệt phương án thủ công?')) return;
+    
+    const dest = destinationPoints.find(d => d.id === destinationId);
+    const destType = dest ? (dest.type === 'pickup' ? 'Điểm tập kết' : 'Kho hàng') : 'Kho hàng';
+    const locations = getExtendedLocations();
+    
+    const distribution = {
+        id: 'dist_' + Date.now(),
+        code: 'DC' + String(Math.floor(Math.random() * 10000)).padStart(4, '0'),
+        title: `📋 Thủ công: ${note || 'Chọn nguồn cung'}`,
+        from: 'Điều phối đa nguồn (Thủ công)',
+        to: destinationName || 'Kho trung tâm',
+        destinationId: destinationId,
+        destinationType: destType,
+        shelter: totalNeed,
+        shelterType: shelterType,
+        status: 'planning',
+        note: note || 'Chọn thủ công từ module Điều phối đa nguồn',
+        source: 'multi-source',
+        fromMultiSource: true,
+        method: 'manual',
+        manualSources: JSON.parse(JSON.stringify(manualSelectedSources)),
+        totalLocations: locations.length,
+        createdAt: new Date().toISOString()
+    };
+    
+    AppData.addDistribution(distribution);
+    multiSourceHistory.push(distribution);
+    loadHistory();
+    
+    document.getElementById('ms-manual-result').style.display = 'none';
+    manualSelectedSources = [];
+    renderManualSources();
+    showNotification(`✅ Đã phê duyệt phương án thủ công!`, 'success');
+}
+
+// ============================================================
+// RENDER LISTS
+// ============================================================
+
+function renderWarehouseList(warehouses) {
+    const container = document.getElementById('ms-warehouse-list');
+    if (!container) return;
+    document.getElementById('ms-warehouse-count').textContent = `${warehouses.length} kho`;
+    
+    if (warehouses.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Không có kho nào có tồn kho</div>';
+        return;
+    }
+    
+    container.innerHTML = warehouses.map(w => `
+        <div class="flex justify-between items-center p-2.5 bg-blue-50 rounded-lg border border-blue-200">
+            <div>
+                <span class="text-sm font-medium text-slate-700">🏢 ${w.name}</span>
+                <span class="text-xs text-slate-400 ml-2">📍 ${w.distance ? w.distance.toFixed(1) : 'N/A'} km</span>
+            </div>
+            <span class="text-sm font-bold text-blue-600">${w.stock.toLocaleString()} bộ</span>
+        </div>
+    `).join('');
+}
+
+function renderSupplierList(suppliers) {
+    const container = document.getElementById('ms-supplier-list');
+    if (!container) return;
+    document.getElementById('ms-supplier-count').textContent = `${suppliers.length} nhà cung cấp`;
+    
+    if (suppliers.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Không có nhà cung cấp hoạt động</div>';
+        return;
+    }
+    
+    container.innerHTML = suppliers.map(s => `
+        <div class="flex justify-between items-center p-2.5 bg-purple-50 rounded-lg border border-purple-200">
+            <div>
+                <span class="text-sm font-medium text-slate-700">🤝 ${s.name}</span>
+                <span class="text-xs text-slate-400 ml-2">⏱️ ${s.leadTime || 24}h</span>
+                <span class="text-xs text-slate-400 ml-2">📍 ${s.distance ? s.distance.toFixed(1) : 'N/A'} km</span>
+            </div>
+            <span class="text-sm font-bold text-purple-600">${(s.capacity || 0).toLocaleString()} bộ</span>
+        </div>
+    `).join('');
+}
+
+function updateStats(need, covered, remaining) {
+    document.getElementById('ms-total').textContent = need;
+    document.getElementById('ms-covered').textContent = covered;
+    document.getElementById('ms-shortage').textContent = remaining;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+
+function loadHistory() {
+    const distributions = AppData.getDistributions();
+    multiSourceHistory = distributions.filter(d => d.source === 'multi-source' || d.fromMultiSource === true);
+    
+    document.getElementById('ms-history-count').textContent = `${multiSourceHistory.length} bản ghi`;
+    
+    const container = document.getElementById('ms-history-list');
+    if (!container) return;
+    
+    if (multiSourceHistory.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-slate-400 py-6">Chưa có lịch sử điều phối</div>';
+        return;
+    }
+    
+    container.innerHTML = multiSourceHistory.slice(0, 10).map(item => `
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-sm transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-semibold text-sm text-slate-700">${item.title || '📋 Yêu cầu bổ sung'}</p>
+                    <p class="text-xs text-slate-500">${item.method === 'auto' ? '🤖 Tự động' : '✋ Thủ công'} | 🏠 ${item.shelterType || 'N/A'} | 📦 ${item.shelter || 0} bộ</p>
+                    ${item.totalLocations ? `<p class="text-xs text-indigo-500">📍 ${item.totalLocations} điểm cứu trợ</p>` : ''}
+                    <p class="text-xs text-slate-400">${item.note || 'Không có ghi chú'}</p>
+                </div>
+                <div class="text-right">
+                    <span class="badge-status ${item.status === 'active' ? 'badge-warning' : item.status === 'completed' ? 'badge-success' : 'badge-info'} text-xs">
+                        ${item.status === 'active' ? '🔄 Đang thực hiện' : item.status === 'completed' ? '✅ Hoàn thành' : '📋 Lập kế hoạch'}
+                    </span>
+                    <p class="text-[10px] text-slate-400 mt-1">${item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : 'Vừa tạo'}</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_multi_source, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_multi_source, 300);
+    });
+}
+
+// ============================================================
+// EXPOSE
+// ============================================================
+
+window.init_admin_multi_source = init_admin_multi_source;
+window.calculateAuto = calculateAuto;
+window.executeManualPlan = executeManualPlan;
+window.approveAutoPlan = approveAutoPlan;
+window.approveManualPlan = approveManualPlan;
+window.addManualSource = addManualSource;
+window.removeManualSource = removeManualSource;
+window.clearManualSources = clearManualSources;
+window.populateManualLocations = populateManualLocations;
+</script>

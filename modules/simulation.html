@@ -1,0 +1,146 @@
+<!-- ============================================================ -->
+<!-- MODULE: MÔ PHỎNG THIÊN TAI -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-cloud-bolt text-indigo-500 mr-1"></i> Kịch bản thiên tai</h4>
+        </div>
+        <div class="space-y-3">
+            <div class="p-3 border rounded-lg cursor-pointer hover:border-indigo-400 transition" onclick="selectScenario('flood')" id="sim-flood">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-water text-blue-500 text-xl"></i>
+                    <div>
+                        <p class="font-semibold text-sm">🌊 Lũ lụt cấp 3</p>
+                        <p class="text-xs text-slate-500">Mực nước: 3.2m</p>
+                    </div>
+                    <span class="badge-status badge-danger ml-auto">Nguy hiểm</span>
+                </div>
+            </div>
+            <div class="p-3 border rounded-lg cursor-pointer hover:border-indigo-400 transition" onclick="selectScenario('storm')" id="sim-storm">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-wind text-amber-500 text-xl"></i>
+                    <div>
+                        <p class="font-semibold text-sm">🌀 Bão số 5</p>
+                        <p class="text-xs text-slate-500">Sức gió: 120km/h</p>
+                    </div>
+                    <span class="badge-status badge-warning ml-auto">Cảnh báo</span>
+                </div>
+            </div>
+            <div class="p-3 border rounded-lg cursor-pointer hover:border-indigo-400 transition" onclick="selectScenario('landslide')" id="sim-landslide">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-mountain text-red-500 text-xl"></i>
+                    <div>
+                        <p class="font-semibold text-sm">🏔️ Sạt lở đất</p>
+                        <p class="text-xs text-slate-500">Tây Nguyên</p>
+                    </div>
+                    <span class="badge-status badge-danger ml-auto">Nguy hiểm</span>
+                </div>
+            </div>
+            <button onclick="runSimulation()" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
+                <i class="fa-solid fa-play"></i> Chạy mô phỏng
+            </button>
+        </div>
+    </div>
+    <div class="lg:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fa-solid fa-chart-bar text-indigo-500 mr-1"></i> Kết quả mô phỏng</h4>
+            </div>
+            <div id="simulation-result" class="text-center text-slate-400 py-8">
+                <i class="fa-solid fa-cloud-rain text-4xl mb-2 block"></i>
+                <p class="text-sm">Chọn kịch bản và nhấn "Chạy mô phỏng"</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="sim-stats" style="display:none;">
+    <div class="stat-box">
+        <div class="value text-red-600" id="sim-affected">0</div>
+        <div class="label">Số hộ bị ảnh hưởng</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="sim-shelter">0</div>
+        <div class="label">Nhu cầu shelter</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-blue-600" id="sim-time">0</div>
+        <div class="label">Thời gian phản hồi (giờ)</div>
+    </div>
+</div>
+
+<script>
+let simSelected = 'flood';
+
+const SCENARIOS = {
+    flood: { name: '🌊 Lũ lụt cấp 3', affected: 12450, shelter: 1560, time: 8.5, desc: 'Mực nước 3.2m, 15 xã bị ảnh hưởng' },
+    storm: { name: '🌀 Bão số 5', affected: 8760, shelter: 980, time: 12.0, desc: 'Sức gió 120km/h, 8 tỉnh ảnh hưởng' },
+    landslide: { name: '🏔️ Sạt lở đất', affected: 5230, shelter: 650, time: 15.5, desc: 'Tây Nguyên, 5 huyện ảnh hưởng' }
+};
+
+function init_admin_simulation() {
+    console.log('🌩️ Khởi tạo module Mô phỏng thiên tai...');
+    document.getElementById('sim-flood').classList.add('border-indigo-400', 'bg-indigo-50');
+}
+
+function selectScenario(scenario) {
+    simSelected = scenario;
+    document.querySelectorAll('#sim-flood, #sim-storm, #sim-landslide').forEach(el => {
+        el.classList.remove('border-indigo-400', 'bg-indigo-50');
+    });
+    document.getElementById(`sim-${scenario}`).classList.add('border-indigo-400', 'bg-indigo-50');
+}
+
+function runSimulation() {
+    const data = SCENARIOS[simSelected];
+    const resultDiv = document.getElementById('simulation-result');
+    
+    resultDiv.innerHTML = `
+        <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200 text-left">
+            <div class="flex items-center gap-3 mb-3">
+                <i class="fa-solid fa-play text-indigo-600"></i>
+                <h5 class="font-semibold text-indigo-800">${data.name}</h5>
+            </div>
+            <p class="text-sm text-slate-600">${data.desc}</p>
+            <div class="grid grid-cols-3 gap-3 mt-3">
+                <div class="bg-white p-2 rounded-lg text-center">
+                    <p class="text-xs text-slate-500">Hộ ảnh hưởng</p>
+                    <p class="font-bold text-red-600">${data.affected.toLocaleString()}</p>
+                </div>
+                <div class="bg-white p-2 rounded-lg text-center">
+                    <p class="text-xs text-slate-500">Nhu cầu shelter</p>
+                    <p class="font-bold text-amber-600">${data.shelter.toLocaleString()}</p>
+                </div>
+                <div class="bg-white p-2 rounded-lg text-center">
+                    <p class="text-xs text-slate-500">Thời gian phản hồi</p>
+                    <p class="font-bold text-blue-600">${data.time} giờ</p>
+                </div>
+            </div>
+            <div class="mt-3 text-xs text-slate-500">
+                <i class="fa-regular fa-circle-check text-emerald-500"></i> Đã tạo cảnh báo tự động
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('sim-stats').style.display = 'grid';
+    document.getElementById('sim-affected').textContent = data.affected.toLocaleString();
+    document.getElementById('sim-shelter').textContent = data.shelter.toLocaleString();
+    document.getElementById('sim-time').textContent = data.time;
+    
+    showNotification(`✅ Đã chạy mô phỏng "${data.name}"`, 'success');
+}
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_simulation, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_simulation, 300);
+    });
+}
+
+window.init_admin_simulation = init_admin_simulation;
+window.selectScenario = selectScenario;
+window.runSimulation = runSimulation;
+</script>

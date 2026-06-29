@@ -1,0 +1,791 @@
+<!-- ============================================================ -->
+<!-- MODULE: QUẢN LÝ TỒN KHO -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+    <div class="stat-box">
+        <div class="value text-blue-600" id="inv-total">0</div>
+        <div class="label">Tổng shelter</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-emerald-600" id="inv-warehouses">0</div>
+        <div class="label">Kho đang hoạt động</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-red-600" id="inv-low-stock">0</div>
+        <div class="label">Kho dưới mức Min</div>
+    </div>
+    <div class="stat-box">
+        <div class="value text-amber-600" id="inv-alerts">0</div>
+        <div class="label">Cảnh báo tồn kho</div>
+    </div>
+</div>
+
+<!-- CẢNH BÁO TỒN KHO THẤP -->
+<div id="low-stock-alerts" class="mb-4"></div>
+
+<!-- ACTION BUTTONS -->
+<div class="flex flex-wrap gap-3 mb-4">
+    <button onclick="showAddInventoryModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition flex items-center gap-2">
+        <i class="fa-solid fa-arrow-right-to-archive"></i> Nhập kho
+    </button>
+    <button onclick="showExportInventoryModal()" class="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition flex items-center gap-2">
+        <i class="fa-solid fa-arrow-right-from-archive"></i> Xuất kho
+    </button>
+    <button onclick="showRequestInventoryModal()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition flex items-center gap-2">
+        <i class="fa-solid fa-file-circle-plus"></i> Yêu cầu bổ sung
+    </button>
+    <button onclick="exportInventoryReport()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition flex items-center gap-2">
+        <i class="fa-solid fa-file-csv"></i> Xuất báo cáo
+    </button>
+</div>
+
+<!-- TỒN KHO TỔNG HỢP THEO KHO -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-warehouse text-blue-500 mr-1"></i> Tồn kho tổng hợp theo kho</h4>
+        <span class="text-xs text-slate-400" id="inv-warehouse-count">0 kho</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" id="warehouse-stock-grid">
+        <div class="text-center text-xs text-slate-400 py-8 col-span-full">Đang tải dữ liệu...</div>
+    </div>
+</div>
+
+<!-- LỊCH SỬ GIAO DỊCH -->
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-clock-rotate-left text-blue-500 mr-1"></i> Lịch sử giao dịch</h4>
+        <span class="text-xs text-slate-400" id="transaction-count">0 giao dịch</span>
+    </div>
+    <div class="table-container">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Mã</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Loại</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Kho</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Loại Shelter</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Số lượng</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ghi chú</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Thời gian</th>
+                    <th class="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Nhập kho -->
+<div id="addInventoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4"><i class="fa-solid fa-arrow-right-to-archive text-blue-500 mr-2"></i> Nhập kho</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Kho</label>
+                <select id="newInvWarehouse" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm"></select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Loại Shelter</label>
+                <select id="newInvName" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="Shelter 18m²">🏠 Shelter 18m² (1-2 người)</option>
+                    <option value="Shelter 24m²" selected>🏠 Shelter 24m² (3-4 người)</option>
+                    <option value="Shelter 30m²">🏠 Shelter 30m² (5-6 người)</option>
+                    <option value="Shelter 36m²">🏠 Shelter 36m² (7-8 người)</option>
+                    <option value="Shelter 48m²">🏠 Shelter 48m² (9-10 người)</option>
+                    <option value="Shelter Đặc biệt">🏠 Shelter Đặc biệt</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng nhập</label>
+                <input type="number" id="newInvQty" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số lượng..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Ghi chú</label>
+                <input type="text" id="newInvNote" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Ghi chú nhập kho..." />
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="addInventoryItem()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Xác nhận nhập</button>
+            <button onclick="closeAddInventoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xuất kho -->
+<div id="exportInventoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4"><i class="fa-solid fa-arrow-right-from-archive text-amber-500 mr-2"></i> Xuất kho</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Kho</label>
+                <select id="exportWarehouse" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm"></select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Loại Shelter</label>
+                <select id="exportItem" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="">-- Chọn loại --</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng xuất</label>
+                <input type="number" id="exportQty" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số lượng xuất..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Lý do xuất</label>
+                <input type="text" id="exportReason" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Lý do xuất kho..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Điểm đến</label>
+                <input type="text" id="exportDestination" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nơi nhận hàng..." />
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="exportInventory()" class="flex-1 bg-amber-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">Xác nhận xuất</button>
+            <button onclick="closeExportInventoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Yêu cầu bổ sung -->
+<div id="requestInventoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4"><i class="fa-solid fa-file-circle-plus text-red-500 mr-2"></i> Yêu cầu bổ sung</h3>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Kho</label>
+                <select id="requestWarehouse" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm"></select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Loại Shelter</label>
+                <select id="requestItem" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="">-- Chọn loại --</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Số lượng cần</label>
+                <input type="number" id="requestQty" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nhập số lượng cần..." />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Mức độ khẩn cấp</label>
+                <select id="requestUrgency" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                    <option value="normal">🟢 Bình thường</option>
+                    <option value="high">🟠 Cao</option>
+                    <option value="critical">🔴 Khẩn cấp</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Lý do</label>
+                <input type="text" id="requestReason" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Lý do yêu cầu bổ sung..." />
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="requestInventory()" class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">Gửi yêu cầu</button>
+            <button onclick="closeRequestInventoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// INVENTORY DATA
+// ============================================================
+let INVENTORY_HISTORY = [];
+let WAREHOUSE_STOCK = {};
+let LOW_STOCK_ALERTS = [];
+
+// Cấu hình mức tồn kho Min cho từng loại shelter
+const SHELTER_MIN_STOCK = {
+    'Shelter 18m²': 20,
+    'Shelter 24m²': 30,
+    'Shelter 30m²': 25,
+    'Shelter 36m²': 20,
+    'Shelter 48m²': 15,
+    'Shelter Đặc biệt': 10
+};
+
+function init_admin_inventory() {
+    console.log('📦 Khởi tạo module Quản lý tồn kho...');
+    loadInventory();
+    
+    window.addEventListener('dataChanged', function(e) {
+        if (e.detail.key === 'inventory_history' || 
+            e.detail.key === AppData.KEYS.INVENTORY || 
+            e.detail.key === AppData.KEYS.WAREHOUSES) {
+            loadInventory();
+        }
+    });
+}
+
+function loadInventory() {
+    // Lấy lịch sử từ AppData
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    
+    // Nếu chưa có dữ liệu, tạo mẫu
+    if (INVENTORY_HISTORY.length === 0) {
+        const warehouses = AppData.getWarehouses();
+        if (warehouses.length > 0) {
+            const sampleHistory = [
+                { warehouseId: warehouses[0]?.id || 'wh_1', name: 'Shelter 24m²', quantity: 120, note: 'Nhập kho ban đầu', type: 'import' },
+                { warehouseId: warehouses[0]?.id || 'wh_1', name: 'Shelter 30m²', quantity: 80, note: 'Nhập kho ban đầu', type: 'import' },
+                { warehouseId: warehouses[1]?.id || 'wh_2', name: 'Shelter 24m²', quantity: 95, note: 'Nhập kho ban đầu', type: 'import' }
+            ];
+            sampleHistory.forEach(entry => {
+                AppData.addInventoryHistory(entry);
+            });
+            INVENTORY_HISTORY = AppData.getInventoryHistory();
+        }
+    }
+    
+    calculateWarehouseStock();
+    checkLowStock();
+    renderWarehouseGrid();
+    renderInventoryHistory();
+    updateStats();
+    populateSelects();
+}
+
+// ============================================================
+// TÍNH TỒN KHO TỔNG HỢP
+// ============================================================
+function calculateWarehouseStock() {
+    WAREHOUSE_STOCK = {};
+    const warehouses = AppData.getWarehouses();
+    const inventory = AppData.getInventory();
+    
+    warehouses.forEach(w => {
+        WAREHOUSE_STOCK[w.id] = {
+            warehouse: w,
+            items: {},
+            total: 0
+        };
+    });
+    
+    inventory.forEach(item => {
+        if (WAREHOUSE_STOCK[item.warehouseId]) {
+            if (!WAREHOUSE_STOCK[item.warehouseId].items[item.name]) {
+                WAREHOUSE_STOCK[item.warehouseId].items[item.name] = 0;
+            }
+            WAREHOUSE_STOCK[item.warehouseId].items[item.name] += item.quantity || 0;
+            WAREHOUSE_STOCK[item.warehouseId].total += item.quantity || 0;
+        }
+    });
+}
+
+// ============================================================
+// KIỂM TRA TỒN KHO THẤP
+// ============================================================
+function checkLowStock() {
+    LOW_STOCK_ALERTS = [];
+    const inventory = AppData.getInventory();
+    
+    inventory.forEach(item => {
+        const min = SHELTER_MIN_STOCK[item.name] || 20;
+        if (item.quantity < min && item.quantity >= 0) {
+            const warehouse = AppData.getWarehouses().find(w => w.id === item.warehouseId);
+            LOW_STOCK_ALERTS.push({
+                warehouseId: item.warehouseId,
+                warehouseName: warehouse?.name || 'N/A',
+                itemName: item.name,
+                currentQty: item.quantity,
+                minStock: min,
+                shortage: min - item.quantity,
+                severity: item.quantity < min * 0.5 ? 'critical' : 'warning'
+            });
+        }
+    });
+    
+    renderAlerts();
+}
+
+function renderAlerts() {
+    const container = document.getElementById('low-stock-alerts');
+    if (!container) return;
+    
+    if (LOW_STOCK_ALERTS.length === 0) {
+        container.innerHTML = `
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-3">
+                <i class="fa-solid fa-check-circle text-emerald-500 text-lg"></i>
+                <span class="text-sm text-emerald-700">✅ Tất cả kho đều đạt mức tồn kho an toàn</span>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                <span class="font-semibold text-red-700">⚠️ CẢNH BÁO TỒN KHO THẤP (${LOW_STOCK_ALERTS.length} mặt hàng)</span>
+            </div>
+            <div class="space-y-2">
+                ${LOW_STOCK_ALERTS.map(alert => `
+                    <div class="flex justify-between items-center p-2 ${alert.severity === 'critical' ? 'bg-red-100' : 'bg-amber-50'} rounded-lg border ${alert.severity === 'critical' ? 'border-red-300' : 'border-amber-200'}">
+                        <div>
+                            <span class="font-medium text-sm">🏢 ${alert.warehouseName}</span>
+                            <span class="text-sm text-slate-600 ml-2">${alert.itemName}</span>
+                            <span class="text-xs text-slate-500 ml-2">Tồn: <span class="font-bold ${alert.severity === 'critical' ? 'text-red-600' : 'text-amber-600'}">${alert.currentQty}</span> / Min: ${alert.minStock}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold ${alert.severity === 'critical' ? 'text-red-600' : 'text-amber-600'}">
+                                ${alert.severity === 'critical' ? '🔴 Thiếu nghiêm trọng' : '🟡 Cần bổ sung'}
+                            </span>
+                            <button onclick="quickRequestItemByAlert('${alert.warehouseId}', '${alert.itemName}', ${alert.shortage})" 
+                                class="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-red-700 transition">
+                                Yêu cầu bổ sung
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// RENDER TỒN KHO TỔNG HỢP
+// ============================================================
+function renderWarehouseGrid() {
+    const container = document.getElementById('warehouse-stock-grid');
+    if (!container) return;
+    
+    const warehouseIds = Object.keys(WAREHOUSE_STOCK);
+    document.getElementById('inv-warehouse-count').textContent = `${warehouseIds.length} kho`;
+    
+    if (warehouseIds.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-xs text-slate-400 py-8 col-span-full">Chưa có dữ liệu tồn kho</div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = warehouseIds.map(whId => {
+        const stock = WAREHOUSE_STOCK[whId];
+        const warehouse = stock.warehouse;
+        const items = stock.items;
+        const total = stock.total;
+        
+        let hasLowStock = false;
+        Object.keys(items).forEach(itemName => {
+            const min = SHELTER_MIN_STOCK[itemName] || 20;
+            if (items[itemName] < min && items[itemName] >= 0) {
+                hasLowStock = true;
+            }
+        });
+        
+        return `
+            <div class="bg-white p-4 rounded-xl border ${hasLowStock ? 'border-red-300 bg-red-50/50' : 'border-slate-200'} shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-slate-800">🏢 ${warehouse?.name || 'N/A'}</p>
+                        <p class="text-xs text-slate-400">${warehouse?.district || ''}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-bold text-blue-600">${total}</p>
+                        <p class="text-[10px] text-slate-400">tổng bộ</p>
+                    </div>
+                </div>
+                <div class="mt-2 space-y-1">
+                    ${Object.keys(items).map(itemName => {
+                        const qty = items[itemName];
+                        const min = SHELTER_MIN_STOCK[itemName] || 20;
+                        const isLow = qty < min && qty >= 0;
+                        return `
+                            <div class="flex justify-between text-xs ${isLow ? 'text-red-600' : 'text-slate-600'}">
+                                <span>🏠 ${itemName}</span>
+                                <span class="font-medium">${qty} bộ ${isLow ? '⚠️' : ''}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                ${hasLowStock ? `
+                    <div class="mt-2 text-xs text-red-600 font-medium">
+                        ⚠️ Có mặt hàng dưới mức Min
+                    </div>
+                ` : `
+                    <div class="mt-2 text-xs text-emerald-600 font-medium">
+                        ✅ Đạt mức tồn kho an toàn
+                    </div>
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// RENDER LỊCH SỬ
+// ============================================================
+function renderInventoryHistory() {
+    const container = document.getElementById('inventory-table-body');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (INVENTORY_HISTORY.length === 0) {
+        container.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 text-sm">Chưa có giao dịch nào</td></tr>`;
+        return;
+    }
+    
+    const warehouses = AppData.getWarehouses();
+    const typeMap = {
+        'import': { label: '📥 Nhập kho', cls: 'text-blue-600' },
+        'export': { label: '📤 Xuất kho', cls: 'text-amber-600' },
+        'request': { label: '📋 Yêu cầu bổ sung', cls: 'text-red-600' }
+    };
+    
+    INVENTORY_HISTORY.slice().reverse().forEach(entry => {
+        const warehouse = warehouses.find(w => w.id === entry.warehouseId);
+        const type = typeMap[entry.type] || typeMap['import'];
+        
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors';
+        tr.innerHTML = `
+            <td class="px-3 py-2.5 text-xs font-bold ${type.cls} whitespace-nowrap" style="font-family: 'Courier New', monospace;">${entry.id || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-xs ${type.cls} font-medium">${type.label}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-700">${warehouse?.name || 'N/A'}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-600">🏠 ${entry.name}</td>
+            <td class="px-3 py-2.5 text-sm font-bold ${entry.type === 'import' ? 'text-blue-600' : entry.type === 'export' ? 'text-amber-600' : 'text-red-600'} text-center">${entry.type === 'import' ? '+' : entry.type === 'export' ? '-' : '📋'} ${entry.quantity}</td>
+            <td class="px-3 py-2.5 text-sm text-slate-500">${entry.note || 'Không có ghi chú'}</td>
+            <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${entry.createdAt ? new Date(entry.createdAt).toLocaleString('vi-VN') : 'N/A'}</td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                ${entry.type !== 'request' ? `
+                    <button onclick="deleteInventoryEntry('${entry.id}')" class="text-red-500 hover:text-red-700 transition-colors" title="Xóa">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                ` : `
+                    <span class="text-xs text-slate-400" title="Yêu cầu bổ sung">📋</span>
+                `}
+            </td>
+        `;
+        container.appendChild(tr);
+    });
+    
+    document.getElementById('transaction-count').textContent = `${INVENTORY_HISTORY.length} giao dịch`;
+}
+
+// ============================================================
+// UPDATE STATS
+// ============================================================
+function updateStats() {
+    const inventory = AppData.getInventory();
+    const total = inventory.reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const activeWarehouses = new Set(inventory.map(i => i.warehouseId)).size;
+    const lowStockCount = LOW_STOCK_ALERTS.length;
+    
+    document.getElementById('inv-total').textContent = total.toLocaleString();
+    document.getElementById('inv-warehouses').textContent = activeWarehouses;
+    document.getElementById('inv-low-stock').textContent = lowStockCount;
+    document.getElementById('inv-alerts').textContent = lowStockCount;
+}
+
+// ============================================================
+// POPULATE SELECTS
+// ============================================================
+function populateSelects() {
+    const warehouses = AppData.getWarehouses();
+    const inventory = AppData.getInventory();
+    
+    // Nhập kho
+    const whSelect = document.getElementById('newInvWarehouse');
+    if (whSelect) {
+        whSelect.innerHTML = warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+    }
+    
+    // Xuất kho
+    const exportWh = document.getElementById('exportWarehouse');
+    if (exportWh) {
+        exportWh.innerHTML = '<option value="">-- Chọn kho --</option>' +
+            warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+        exportWh.onchange = function() { updateExportItems(this.value); };
+    }
+    
+    // Yêu cầu bổ sung
+    const reqWh = document.getElementById('requestWarehouse');
+    if (reqWh) {
+        reqWh.innerHTML = '<option value="">-- Chọn kho --</option>' +
+            warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+        reqWh.onchange = function() { updateRequestItems(this.value); };
+    }
+}
+
+function updateExportItems(warehouseId) {
+    const select = document.getElementById('exportItem');
+    if (!select) return;
+    const inventory = AppData.getInventory().filter(i => i.warehouseId === warehouseId);
+    select.innerHTML = '<option value="">-- Chọn loại --</option>' +
+        inventory.map(i => `<option value="${i.id}" data-qty="${i.quantity}">🏠 ${i.name} (Tồn: ${i.quantity})</option>`).join('');
+}
+
+function updateRequestItems(warehouseId) {
+    const select = document.getElementById('requestItem');
+    if (!select) return;
+    const inventory = AppData.getInventory().filter(i => i.warehouseId === warehouseId);
+    select.innerHTML = '<option value="">-- Chọn loại --</option>' +
+        inventory.map(i => `<option value="${i.id}" data-qty="${i.quantity}">🏠 ${i.name} (Tồn: ${i.quantity})</option>`).join('');
+}
+
+// ============================================================
+// NHẬP KHO
+// ============================================================
+function showAddInventoryModal() {
+    populateSelects();
+    document.getElementById('addInventoryModal').classList.remove('hidden');
+    document.getElementById('newInvQty').value = '';
+    document.getElementById('newInvNote').value = '';
+}
+
+function closeAddInventoryModal() {
+    document.getElementById('addInventoryModal').classList.add('hidden');
+}
+
+function addInventoryItem() {
+    const warehouseId = document.getElementById('newInvWarehouse').value;
+    const name = document.getElementById('newInvName').value;
+    const quantity = parseInt(document.getElementById('newInvQty').value);
+    const note = document.getElementById('newInvNote').value.trim() || 'Nhập kho';
+    
+    if (!warehouseId || !name || !quantity) {
+        showNotification('Vui lòng nhập đầy đủ thông tin!', 'error');
+        return;
+    }
+    
+    AppData.addInventoryHistory({
+        warehouseId: warehouseId,
+        name: name,
+        quantity: quantity,
+        note: note,
+        type: 'import'
+    });
+    
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    calculateWarehouseStock();
+    checkLowStock();
+    renderWarehouseGrid();
+    renderInventoryHistory();
+    updateStats();
+    
+    closeAddInventoryModal();
+    showNotification(`✅ Đã nhập kho ${quantity} ${name} thành công!`, 'success');
+}
+
+// ============================================================
+// XUẤT KHO
+// ============================================================
+function showExportInventoryModal() {
+    populateSelects();
+    document.getElementById('exportInventoryModal').classList.remove('hidden');
+    document.getElementById('exportQty').value = '';
+    document.getElementById('exportReason').value = '';
+    document.getElementById('exportDestination').value = '';
+}
+
+function closeExportInventoryModal() {
+    document.getElementById('exportInventoryModal').classList.add('hidden');
+}
+
+function exportInventory() {
+    const warehouseId = document.getElementById('exportWarehouse').value;
+    const itemId = document.getElementById('exportItem').value;
+    const qty = parseInt(document.getElementById('exportQty').value);
+    const reason = document.getElementById('exportReason').value.trim() || 'Xuất kho';
+    const destination = document.getElementById('exportDestination').value.trim() || 'N/A';
+    
+    if (!warehouseId || !itemId || !qty) {
+        showNotification('Vui lòng nhập đầy đủ thông tin!', 'error');
+        return;
+    }
+    
+    const item = AppData.getInventory().find(i => i.id === itemId);
+    if (!item) {
+        showNotification('Không tìm thấy mặt hàng!', 'error');
+        return;
+    }
+    
+    if (qty > item.quantity) {
+        showNotification(`⚠️ Không đủ hàng! Tồn: ${item.quantity}, yêu cầu: ${qty}`, 'error');
+        return;
+    }
+    
+    AppData.addInventoryHistory({
+        warehouseId: warehouseId,
+        name: item.name,
+        quantity: qty,
+        note: `Xuất đến: ${destination} - ${reason}`,
+        type: 'export'
+    });
+    
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    calculateWarehouseStock();
+    checkLowStock();
+    renderWarehouseGrid();
+    renderInventoryHistory();
+    updateStats();
+    
+    closeExportInventoryModal();
+    showNotification(`✅ Đã xuất kho ${qty} ${item.name} thành công!`, 'success');
+    
+    const newStock = AppData.getStockByWarehouseAndType(warehouseId, item.name);
+    if (newStock < SHELTER_MIN_STOCK[item.name]) {
+        showNotification(`⚠️ Cảnh báo: ${item.name} tại kho đã xuống dưới mức tối thiểu`, 'warning');
+    }
+}
+
+// ============================================================
+// YÊU CẦU BỔ SUNG
+// ============================================================
+function showRequestInventoryModal() {
+    populateSelects();
+    document.getElementById('requestInventoryModal').classList.remove('hidden');
+    document.getElementById('requestQty').value = '';
+    document.getElementById('requestReason').value = '';
+}
+
+function closeRequestInventoryModal() {
+    document.getElementById('requestInventoryModal').classList.add('hidden');
+}
+
+function requestInventory() {
+    const warehouseId = document.getElementById('requestWarehouse').value;
+    const itemId = document.getElementById('requestItem').value;
+    const qty = parseInt(document.getElementById('requestQty').value);
+    const urgency = document.getElementById('requestUrgency').value;
+    const reason = document.getElementById('requestReason').value.trim() || 'Yêu cầu bổ sung';
+    
+    if (!warehouseId || !itemId || !qty) {
+        showNotification('Vui lòng nhập đầy đủ thông tin!', 'error');
+        return;
+    }
+    
+    const item = AppData.getInventory().find(i => i.id === itemId);
+    if (!item) {
+        showNotification('Không tìm thấy mặt hàng!', 'error');
+        return;
+    }
+    
+    AppData.addInventoryHistory({
+        warehouseId: warehouseId,
+        name: item.name,
+        quantity: qty,
+        note: `Yêu cầu bổ sung - ${reason} (${urgency === 'critical' ? '🔴 Khẩn cấp' : urgency === 'high' ? '🟠 Cao' : '🟢 Bình thường'})`,
+        type: 'request',
+        urgency: urgency,
+        currentQty: item.quantity
+    });
+    
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    renderInventoryHistory();
+    updateStats();
+    
+    closeRequestInventoryModal();
+    showNotification(`📋 Đã gửi yêu cầu bổ sung ${qty} ${item.name} (${urgency === 'critical' ? '🔴 Khẩn cấp' : urgency === 'high' ? '🟠 Cao' : '🟢 Bình thường'})`, 'success');
+    
+    AppData.addNotification({
+        title: `📋 Yêu cầu bổ sung: ${item.name}`,
+        detail: `Kho cần bổ sung ${qty} bộ - ${urgency === 'critical' ? '🔴 Khẩn cấp' : urgency === 'high' ? '🟠 Cao' : '🟢 Bình thường'}`,
+        type: 'inventory_request'
+    });
+}
+
+function quickRequestItemByAlert(warehouseId, itemName, shortage) {
+    if (!confirm(`Yêu cầu bổ sung ${shortage} ${itemName} cho kho này?`)) return;
+    
+    const warehouses = AppData.getWarehouses();
+    const warehouse = warehouses.find(w => w.id === warehouseId);
+    
+    AppData.addInventoryHistory({
+        warehouseId: warehouseId,
+        name: itemName,
+        quantity: shortage,
+        note: `Tự động bổ sung do tồn kho dưới mức Min (${shortage} bộ) - 🔴 Khẩn cấp`,
+        type: 'request',
+        urgency: 'critical'
+    });
+    
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    renderInventoryHistory();
+    updateStats();
+    
+    showNotification(`📋 Đã gửi yêu cầu bổ sung ${shortage} ${itemName} (🔴 Khẩn cấp)`, 'success');
+    
+    AppData.addNotification({
+        title: `⚠️ Yêu cầu bổ sung tự động: ${itemName}`,
+        detail: `${warehouse?.name || 'Kho'} cần bổ sung ${shortage} bộ (dưới mức Min)`,
+        type: 'inventory_alert'
+    });
+}
+
+// ============================================================
+// XÓA GIAO DỊCH
+// ============================================================
+function deleteInventoryEntry(id) {
+    if (!confirm('Bạn có chắc muốn xóa giao dịch này?')) return;
+    
+    AppData.deleteInventoryHistory(id);
+    INVENTORY_HISTORY = AppData.getInventoryHistory();
+    calculateWarehouseStock();
+    checkLowStock();
+    renderWarehouseGrid();
+    renderInventoryHistory();
+    updateStats();
+    showNotification('🗑️ Đã xóa giao dịch', 'warning');
+}
+
+// ============================================================
+// XUẤT BÁO CÁO
+// ============================================================
+function exportInventoryReport() {
+    const warehouses = AppData.getWarehouses();
+    const inventory = AppData.getInventory();
+    let report = '=== BÁO CÁO TỒN KHO ===\n\n';
+    report += `Ngày: ${new Date().toLocaleString('vi-VN')}\n\n`;
+    
+    warehouses.forEach(w => {
+        const items = inventory.filter(i => i.warehouseId === w.id);
+        if (items.length === 0) return;
+        
+        report += `🏢 ${w.name}:\n`;
+        items.forEach(item => {
+            const min = SHELTER_MIN_STOCK[item.name] || 20;
+            const status = item.quantity < min ? '⚠️ Dưới Min' : '✅ An toàn';
+            report += `   - ${item.name}: ${item.quantity} bộ (${status})\n`;
+        });
+        report += '\n';
+    });
+    
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bao_cao_ton_kho_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('✅ Đã xuất báo cáo tồn kho!', 'success');
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_inventory, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_inventory, 300);
+    });
+}
+
+// ============================================================
+// EXPOSE
+// ============================================================
+window.init_admin_inventory = init_admin_inventory;
+window.showAddInventoryModal = showAddInventoryModal;
+window.closeAddInventoryModal = closeAddInventoryModal;
+window.addInventoryItem = addInventoryItem;
+window.showExportInventoryModal = showExportInventoryModal;
+window.closeExportInventoryModal = closeExportInventoryModal;
+window.exportInventory = exportInventory;
+window.showRequestInventoryModal = showRequestInventoryModal;
+window.closeRequestInventoryModal = closeRequestInventoryModal;
+window.requestInventory = requestInventory;
+window.quickRequestItemByAlert = quickRequestItemByAlert;
+window.deleteInventoryEntry = deleteInventoryEntry;
+window.exportInventoryReport = exportInventoryReport;
+</script>

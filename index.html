@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HLMS - Đăng nhập & Đăng ký</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow-y: auto;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(34, 197, 94, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+            animation: rotateBg 60s linear infinite;
+            z-index: 0;
+        }
+        @keyframes rotateBg {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 520px;
+            position: relative;
+            z-index: 1;
+            margin: auto;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(40px);
+            border-radius: 28px;
+            padding: 40px 36px 32px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+        }
+        .logo { text-align: center; margin-bottom: 24px; }
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+            border-radius: 18px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            margin-bottom: 14px;
+            font-size: 26px;
+            color: #3b82f6;
+        }
+        .logo h1 { color: white; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .logo h1 span { background: linear-gradient(135deg, #3b82f6, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo p { color: #94a3b8; font-size: 12px; font-weight: 400; margin-top: 4px; }
+
+        .role-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+        .role-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s;
+            position: relative;
+        }
+        .role-card:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
+        .role-card .icon { font-size: 32px; margin-bottom: 8px; display: block; }
+        .role-card .name { color: #cbd5e1; font-size: 13px; font-weight: 600; display: block; }
+        .role-card .desc { color: #64748b; font-size: 10px; display: block; margin-top: 4px; }
+        .role-card .check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; color: white; display: none; align-items: center; justify-content: center; font-size: 10px; }
+        .role-card.active-government { border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); box-shadow: 0 0 30px rgba(59, 130, 246, 0.1); }
+        .role-card.active-government .check { display: flex; }
+        .role-card.active-government .icon { color: #3b82f6; }
+        .role-card.active-volunteer { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); box-shadow: 0 0 30px rgba(245, 158, 11, 0.1); }
+        .role-card.active-volunteer .check { display: flex; }
+        .role-card.active-volunteer .icon { color: #f59e0b; }
+        .role-card.active-resident { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); box-shadow: 0 0 30px rgba(34, 197, 94, 0.1); }
+        .role-card.active-resident .check { display: flex; }
+        .role-card.active-resident .icon { color: #22c55e; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; color: #94a3b8; font-size: 11px; font-weight: 500; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group .input-wrapper { position: relative; }
+        .form-group .input-wrapper .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #475569; font-size: 14px; pointer-events: none; }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        .form-group input::placeholder { color: #475569; }
+        .form-group input:focus { border-color: #3b82f6; background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.06); }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.4s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            margin-top: 4px;
+        }
+        .login-btn.btn-government { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
+        .login-btn.btn-government:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4); }
+        .login-btn.btn-volunteer { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3); }
+        .login-btn.btn-volunteer:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4); }
+        .login-btn.btn-resident { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3); }
+        .login-btn.btn-resident:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4); }
+        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #fca5a5;
+            font-size: 12px;
+            display: none;
+            margin-bottom: 14px;
+            align-items: center;
+            gap: 10px;
+        }
+        .error-message.show { display: flex; }
+        .success-message {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #86efac;
+            font-size: 12px;
+            display: none;
+            margin-bottom: 14px;
+            align-items: center;
+            gap: 10px;
+        }
+        .success-message.show { display: flex; }
+
+        .hidden { display: none !important; }
+        .footer-text { text-align: center; color: #334155; font-size: 11px; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.03); }
+
+        .gps-status { margin-top: 8px; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+        .gps-active { background: #dcfce7; color: #166534; }
+        .gps-loading { background: #fef3c7; color: #92400e; }
+        .gps-inactive { background: #fee2e2; color: #991b1b; }
+
+        .btn-gps {
+            padding: 8px 16px;
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-gps:hover { background: #16a34a; }
+        .btn-gps.loading { opacity: 0.7; pointer-events: none; }
+
+        .required-note {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .required-note .highlight { color: #fca5a5; }
+
+        .register-link {
+            text-align: center;
+            margin-top: 14px;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .register-link button {
+            background: none;
+            border: none;
+            color: #3b82f6;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            transition: 0.3s;
+        }
+        .register-link button:hover { color: #60a5fa; text-decoration: underline; }
+
+        /* Register Form */
+        .register-form {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 16px;
+        }
+        .register-form .form-title {
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        /* Animation */
+        .fade-transition {
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 20px 12px; }
+            .login-card { padding: 24px 16px 20px; border-radius: 20px; }
+            .role-selector { gap: 8px; }
+            .role-card { padding: 14px 8px; }
+            .role-card .icon { font-size: 24px; }
+            .role-card .name { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="logo">
+                <div class="logo-icon"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                <h1>HLMS <span>Connect</span></h1>
+                <p>Humanitarian Logistics Management System</p>
+            </div>
+
+            <!-- Role Selector -->
+            <div class="role-selector" id="roleSelector">
+                <div class="role-card active-government" data-role="government" onclick="selectRole('government')">
+                    <span class="check"><i class="fa-solid fa-check"></i></span>
+                    <span class="icon">🏛️</span>
+                    <span class="name">Cán bộ điều phối</span>
+                    <span class="desc">Quản lý & Điều phối</span>
+                </div>
+                <div class="role-card" data-role="volunteer" onclick="selectRole('volunteer')">
+                    <span class="check"><i class="fa-solid fa-check"></i></span>
+                    <span class="icon">🤝</span>
+                    <span class="name">Tình nguyện viên</span>
+                    <span class="desc">Hỗ trợ hiện trường</span>
+                </div>
+                <div class="role-card" data-role="resident" onclick="selectRole('resident')">
+                    <span class="check"><i class="fa-solid fa-check"></i></span>
+                    <span class="icon">👤</span>
+                    <span class="name">Người dân</span>
+                    <span class="desc">Nhận hỗ trợ cứu trợ</span>
+                </div>
+            </div>
+
+            <!-- Error & Success Messages -->
+            <div class="error-message" id="errorMessage">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="errorText">Vui lòng kiểm tra lại thông tin</span>
+            </div>
+            <div class="success-message" id="successMessage">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="successText">Đăng ký thành công!</span>
+            </div>
+
+            <!-- ============ FORM CHÍNH ============ -->
+            <form id="mainForm" onsubmit="handleSubmit(event)">
+                <!-- Government / Volunteer - Login Fields -->
+                <div id="loginFields">
+                    <div class="form-group">
+                        <label>Tên đăng nhập</label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-user input-icon"></i>
+                            <input type="text" id="username" placeholder="Nhập tên đăng nhập..." value="admin" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="password" placeholder="Nhập mật khẩu..." value="123456" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resident Fields -->
+                <div id="residentFields" class="hidden">
+                    <div class="form-group">
+                        <label>Họ và tên <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-address-card input-icon"></i>
+                            <input type="text" id="residentName" placeholder="Nhập họ và tên của bạn..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Địa chỉ</label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-location-dot input-icon"></i>
+                            <input type="text" id="residentAddress" placeholder="Nhập địa chỉ của bạn..." />
+                        </div>
+                        <div class="required-note">
+                            <span class="highlight">*</span> Nhập địa chỉ <span class="highlight">HOẶC</span> bật GPS bên dưới
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Vị trí GPS</label>
+                        <button type="button" class="btn-gps" id="btnGps" onclick="getGpsLocation()">
+                            <i class="fa-solid fa-satellite"></i> Lấy vị trí GPS
+                        </button>
+                        <div id="gpsStatus" class="gps-status gps-inactive">
+                            <i class="fa-regular fa-circle-xmark"></i> Chưa xác định
+                        </div>
+                        <input type="hidden" id="residentLat" value="" />
+                        <input type="hidden" id="residentLng" value="" />
+                        <div class="required-note">
+                            <span class="highlight">*</span> Bật GPS <span class="highlight">HOẶC</span> nhập địa chỉ thủ công
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Register Fields (chỉ cho Admin & Volunteer) -->
+                <div id="registerFields" class="hidden register-form">
+                    <div class="form-title"><i class="fa-regular fa-user-plus"></i> Đăng ký tài khoản mới</div>
+                    <div class="form-group">
+                        <label>Họ và tên <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-address-card input-icon"></i>
+                            <input type="text" id="registerFullName" placeholder="Nhập họ và tên của bạn..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên đăng nhập <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-user input-icon"></i>
+                            <input type="text" id="registerUsername" placeholder="Chọn tên đăng nhập..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="registerPassword" placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Xác nhận mật khẩu <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="registerConfirmPassword" placeholder="Nhập lại mật khẩu..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Số điện thoại <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-phone input-icon"></i>
+                            <input type="tel" id="registerPhone" placeholder="Nhập số điện thoại..." />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email <span class="text-red-500">*</span></label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-envelope input-icon"></i>
+                            <input type="email" id="registerEmail" placeholder="Nhập email..." />
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn btn-government" id="submitBtn">
+                    <span class="btn-text">Đăng nhập</span>
+                </button>
+            </form>
+
+            <!-- Register Link (chỉ hiển thị khi chọn Admin hoặc Volunteer) -->
+            <div class="register-link" id="registerLink">
+                <span id="registerText">Chưa có tài khoản?</span>
+                <button type="button" id="toggleRegisterBtn" onclick="toggleRegister()">
+                    Đăng ký ngay
+                </button>
+            </div>
+
+            <div class="footer-text">&copy; 2026 HLMS. All rights reserved.</div>
+        </div>
+    </div>
+
+    <script src="js/admin-data-utils.js"></script>
+    <script>
+        // ============================================================
+        // STATE
+        // ============================================================
+        let currentRole = 'government';
+        let isRegisterMode = false;
+        let gpsLocation = null;
+        let isProcessing = false;
+
+        // Registered accounts (lưu trong localStorage)
+        let registeredAccounts = [];
+
+        // ============================================================
+        // INIT - Load registered accounts from localStorage
+        // ============================================================
+        function loadAccounts() {
+            const stored = localStorage.getItem('hlms_registered_accounts');
+            if (stored) {
+                try {
+                    registeredAccounts = JSON.parse(stored);
+                } catch(e) {
+                    registeredAccounts = [];
+                }
+            } else {
+                // Seed with default accounts
+                registeredAccounts = [
+                    { 
+                        id: 'acc_1', 
+                        role: 'government', 
+                        username: 'admin', 
+                        password: '123456',
+                        fullName: 'Administrator',
+                        phone: '0900000001',
+                        email: 'admin@hlms.com',
+                        createdAt: new Date().toISOString()
+                    },
+                    { 
+                        id: 'acc_2', 
+                        role: 'volunteer', 
+                        username: 'volunteer', 
+                        password: '123456',
+                        fullName: 'Volunteer User',
+                        phone: '0900000002',
+                        email: 'volunteer@hlms.com',
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                saveAccounts();
+            }
+        }
+
+        function saveAccounts() {
+            localStorage.setItem('hlms_registered_accounts', JSON.stringify(registeredAccounts));
+        }
+
+        function findAccount(username, role) {
+            return registeredAccounts.find(acc => 
+                acc.username === username && acc.role === role
+            );
+        }
+
+        function findAccountByUsername(username) {
+            return registeredAccounts.find(acc => acc.username === username);
+        }
+
+        function addAccount(account) {
+            account.id = 'acc_' + Date.now();
+            account.createdAt = new Date().toISOString();
+            registeredAccounts.push(account);
+            saveAccounts();
+            return account;
+        }
+
+        // ============================================================
+        // SELECT ROLE
+        // ============================================================
+        function selectRole(role) {
+            // Nếu đang ở chế độ đăng ký và chọn Resident -> tắt đăng ký
+            if (role === 'resident' && isRegisterMode) {
+                toggleRegister(); // Tắt chế độ đăng ký
+            }
+
+            currentRole = role;
+            
+            // Update role cards
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.className = 'role-card';
+                if (card.dataset.role === role) card.classList.add(`active-${role}`);
+            });
+
+            // Update UI based on role
+            const loginFields = document.getElementById('loginFields');
+            const residentFields = document.getElementById('residentFields');
+            const registerFields = document.getElementById('registerFields');
+            const registerLink = document.getElementById('registerLink');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (role === 'resident') {
+                // Người dân: chỉ nhập tên + GPS/địa chỉ, không đăng ký
+                loginFields.classList.add('hidden');
+                residentFields.classList.remove('hidden');
+                registerFields.classList.add('hidden');
+                registerLink.classList.add('hidden');
+                submitBtn.className = 'login-btn btn-resident';
+                submitBtn.querySelector('.btn-text').textContent = 'Vào hệ thống';
+                
+                // Đảm bảo tắt chế độ đăng ký
+                if (isRegisterMode) {
+                    isRegisterMode = false;
+                    document.getElementById('toggleRegisterBtn').textContent = 'Đăng ký ngay';
+                    document.getElementById('registerText').textContent = 'Chưa có tài khoản?';
+                }
+            } else {
+                // Admin hoặc Volunteer: hiển thị login + đăng ký
+                residentFields.classList.add('hidden');
+                registerLink.classList.remove('hidden');
+                submitBtn.className = `login-btn btn-${role}`;
+                
+                // Set default credentials
+                const defaultCred = role === 'government' 
+                    ? { username: 'admin', password: '123456' }
+                    : { username: 'volunteer', password: '123456' };
+                document.getElementById('username').value = defaultCred.username;
+                document.getElementById('password').value = defaultCred.password;
+
+                // Nếu đang ở chế độ đăng ký, ẩn login và hiện register
+                if (isRegisterMode) {
+                    loginFields.classList.add('hidden');
+                    registerFields.classList.remove('hidden');
+                    submitBtn.querySelector('.btn-text').textContent = 'Đăng ký';
+                    document.getElementById('toggleRegisterBtn').textContent = 'Đăng nhập ngay';
+                    document.getElementById('registerText').textContent = 'Đã có tài khoản?';
+                } else {
+                    loginFields.classList.remove('hidden');
+                    registerFields.classList.add('hidden');
+                    submitBtn.querySelector('.btn-text').textContent = 'Đăng nhập';
+                    document.getElementById('toggleRegisterBtn').textContent = 'Đăng ký ngay';
+                    document.getElementById('registerText').textContent = 'Chưa có tài khoản?';
+                }
+            }
+
+            hideError();
+            hideSuccess();
+        }
+
+        // ============================================================
+        // TOGGLE REGISTER - Ẩn/Hiện form đăng ký
+        // ============================================================
+        function toggleRegister() {
+            if (currentRole === 'resident') {
+                showError('⚠️ Người dân không cần đăng ký tài khoản');
+                return;
+            }
+
+            isRegisterMode = !isRegisterMode;
+            const loginFields = document.getElementById('loginFields');
+            const registerFields = document.getElementById('registerFields');
+            const submitBtn = document.getElementById('submitBtn');
+            const toggleBtn = document.getElementById('toggleRegisterBtn');
+            const registerText = document.getElementById('registerText');
+
+            if (isRegisterMode) {
+                // Ẩn login, hiện register
+                loginFields.classList.add('hidden');
+                registerFields.classList.remove('hidden');
+                submitBtn.querySelector('.btn-text').textContent = 'Đăng ký';
+                toggleBtn.textContent = 'Đăng nhập ngay';
+                registerText.textContent = 'Đã có tài khoản?';
+                // Reset register form
+                document.getElementById('registerFullName').value = '';
+                document.getElementById('registerUsername').value = '';
+                document.getElementById('registerPassword').value = '';
+                document.getElementById('registerConfirmPassword').value = '';
+                document.getElementById('registerPhone').value = '';
+                document.getElementById('registerEmail').value = '';
+            } else {
+                // Hiện login, ẩn register
+                loginFields.classList.remove('hidden');
+                registerFields.classList.add('hidden');
+                submitBtn.querySelector('.btn-text').textContent = 'Đăng nhập';
+                toggleBtn.textContent = 'Đăng ký ngay';
+                registerText.textContent = 'Chưa có tài khoản?';
+            }
+
+            hideError();
+            hideSuccess();
+        }
+
+        // ============================================================
+        // GPS
+        // ============================================================
+        function getGpsLocation() {
+            const statusEl = document.getElementById('gpsStatus');
+            const btnGps = document.getElementById('btnGps');
+            
+            statusEl.className = 'gps-status gps-loading';
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm GPS...';
+            btnGps.classList.add('loading');
+            btnGps.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        gpsLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        statusEl.className = 'gps-status gps-active';
+                        statusEl.innerHTML = `<i class="fa-regular fa-circle-check"></i> GPS: ${gpsLocation.lat.toFixed(4)}, ${gpsLocation.lng.toFixed(4)}`;
+                        document.getElementById('residentLat').value = gpsLocation.lat;
+                        document.getElementById('residentLng').value = gpsLocation.lng;
+                        btnGps.classList.remove('loading');
+                        btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                        showToast('📍 Đã xác định vị trí GPS!', 'success');
+                    },
+                    function(err) {
+                        statusEl.className = 'gps-status gps-inactive';
+                        statusEl.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Không thể lấy GPS';
+                        btnGps.classList.remove('loading');
+                        btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                        showToast('❌ Không thể lấy vị trí GPS', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                statusEl.className = 'gps-status gps-inactive';
+                statusEl.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Trình duyệt không hỗ trợ GPS';
+                btnGps.classList.remove('loading');
+                btnGps.innerHTML = '<i class="fa-solid fa-satellite"></i> Lấy vị trí GPS';
+                showToast('❌ Trình duyệt không hỗ trợ GPS', 'error');
+            }
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const colors = { info: '#3b82f6', success: '#22c55e', warning: '#f59e0b', error: '#ef4444' };
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+                border-radius: 10px; color: white; font-size: 13px; font-weight: 500;
+                z-index: 9999; background: ${colors[type] || colors.info};
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 90%;
+                animation: slideUp 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = '0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============================================================
+        // SHOW/HIDE ERROR & SUCCESS
+        // ============================================================
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').classList.add('show');
+            document.getElementById('successMessage').classList.remove('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function showSuccess(message) {
+            document.getElementById('successText').textContent = message;
+            document.getElementById('successMessage').classList.add('show');
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function hideSuccess() {
+            document.getElementById('successMessage').classList.remove('show');
+        }
+
+        // ============================================================
+        // HANDLE SUBMIT (Login or Register)
+        // ============================================================
+        function handleSubmit(event) {
+            event.preventDefault();
+            if (isProcessing) return;
+            hideError();
+            hideSuccess();
+
+            // === RESIDENT ===
+            if (currentRole === 'resident') {
+                const fullName = document.getElementById('residentName').value.trim();
+                const address = document.getElementById('residentAddress').value.trim();
+                const lat = document.getElementById('residentLat').value;
+                const lng = document.getElementById('residentLng').value;
+
+                if (!fullName) {
+                    showError('⚠️ Vui lòng nhập họ và tên của bạn');
+                    document.getElementById('residentName').focus();
+                    return;
+                }
+
+                const hasAddress = address.length > 0;
+                const hasGps = lat && lng && parseFloat(lat) !== 0 && parseFloat(lng) !== 0;
+
+                if (!hasAddress && !hasGps) {
+                    showError('⚠️ Vui lòng nhập địa chỉ HOẶC bật GPS để xác định vị trí');
+                    document.getElementById('residentAddress').focus();
+                    return;
+                }
+
+                const userData = {
+                    username: `resident_${Date.now()}`,
+                    role: 'resident',
+                    roleName: 'Người dân',
+                    fullName: fullName,
+                    address: address || 'Vị trí GPS',
+                    lat: hasGps ? parseFloat(lat) : null,
+                    lng: hasGps ? parseFloat(lng) : null,
+                    loginTime: new Date().toISOString()
+                };
+
+                isProcessing = true;
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
+
+                AppData.setUser(userData);
+                
+                setTimeout(() => {
+                    window.location.href = 'resident.html';
+                }, 600);
+                return;
+            }
+
+            // === ADMIN / VOLUNTEER ===
+            if (isRegisterMode) {
+                // XỬ LÝ ĐĂNG KÝ
+                handleRegister();
+            } else {
+                // XỬ LÝ ĐĂNG NHẬP
+                handleLogin();
+            }
+        }
+
+        // ============================================================
+        // HANDLE LOGIN
+        // ============================================================
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
+                showError('⚠️ Vui lòng nhập tên đăng nhập và mật khẩu');
+                return;
+            }
+
+            // Check in registered accounts
+            const account = findAccount(username, currentRole);
+            
+            if (account && account.password === password) {
+                // Login successful
+                isProcessing = true;
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang đăng nhập...';
+
+                const roleLabel = currentRole === 'government' ? 'Cán bộ điều phối' : 'Tình nguyện viên';
+                AppData.setUser({
+                    username: username,
+                    role: currentRole,
+                    roleName: roleLabel,
+                    fullName: account.fullName,
+                    loginTime: new Date().toISOString()
+                });
+
+                const redirect = currentRole === 'government' ? 'admin.html' : 'volunteer.html';
+                setTimeout(() => {
+                    window.location.href = redirect;
+                }, 600);
+            } else if (account) {
+                showError('❌ Mật khẩu không chính xác');
+                resetSubmitButton('Đăng nhập');
+            } else {
+                // Check if username exists in other roles
+                const existing = findAccountByUsername(username);
+                if (existing) {
+                    showError(`❌ Tài khoản này thuộc vai trò "${existing.role === 'government' ? 'Cán bộ' : 'Tình nguyện viên'}". Vui lòng chọn đúng vai trò.`);
+                } else {
+                    showError('❌ Tài khoản không tồn tại. Vui lòng đăng ký hoặc kiểm tra lại.');
+                }
+                resetSubmitButton('Đăng nhập');
+            }
+        }
+
+        // ============================================================
+        // HANDLE REGISTER
+        // ============================================================
+        function handleRegister() {
+            const fullName = document.getElementById('registerFullName').value.trim();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const phone = document.getElementById('registerPhone').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+
+            // Validate
+            if (!fullName) {
+                showError('⚠️ Vui lòng nhập họ và tên');
+                document.getElementById('registerFullName').focus();
+                return;
+            }
+
+            if (!username || username.length < 3) {
+                showError('⚠️ Tên đăng nhập phải có ít nhất 3 ký tự');
+                document.getElementById('registerUsername').focus();
+                return;
+            }
+
+            // Check if username already exists
+            if (findAccountByUsername(username)) {
+                showError('⚠️ Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.');
+                document.getElementById('registerUsername').focus();
+                return;
+            }
+
+            if (!password || password.length < 6) {
+                showError('⚠️ Mật khẩu phải có ít nhất 6 ký tự');
+                document.getElementById('registerPassword').focus();
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('⚠️ Mật khẩu xác nhận không khớp');
+                document.getElementById('registerConfirmPassword').focus();
+                return;
+            }
+
+            if (!phone || phone.length < 10) {
+                showError('⚠️ Vui lòng nhập số điện thoại hợp lệ');
+                document.getElementById('registerPhone').focus();
+                return;
+            }
+
+            if (!email || !email.includes('@')) {
+                showError('⚠️ Vui lòng nhập email hợp lệ');
+                document.getElementById('registerEmail').focus();
+                return;
+            }
+
+            // Create account
+            const newAccount = {
+                role: currentRole,
+                username: username,
+                password: password,
+                fullName: fullName,
+                phone: phone,
+                email: email
+            };
+
+            addAccount(newAccount);
+
+            // Show success
+            const roleName = currentRole === 'government' ? 'Cán bộ điều phối' : 'Tình nguyện viên';
+            showSuccess(`✅ Đăng ký tài khoản ${roleName} thành công!`);
+
+            // Auto fill login form
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+
+            // Reset register form
+            document.getElementById('registerFullName').value = '';
+            document.getElementById('registerUsername').value = '';
+            document.getElementById('registerPassword').value = '';
+            document.getElementById('registerConfirmPassword').value = '';
+            document.getElementById('registerPhone').value = '';
+            document.getElementById('registerEmail').value = '';
+
+            // Switch back to login mode after 1.5s
+            setTimeout(() => {
+                if (isRegisterMode) {
+                    toggleRegister(); // Tắt chế độ đăng ký
+                }
+                // Focus on login button
+                document.getElementById('submitBtn').focus();
+            }, 1500);
+        }
+
+        function resetSubmitButton(text) {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = false;
+            btn.innerHTML = `<span class="btn-text">${text}</span>`;
+            isProcessing = false;
+        }
+
+        // ============================================================
+        // CHECK SESSION
+        // ============================================================
+        (function checkSession() {
+            loadAccounts();
+            
+            const user = AppData.getUser();
+            if (user) {
+                const redirectMap = {
+                    government: 'admin.html',
+                    resident: 'resident.html',
+                    volunteer: 'volunteer.html'
+                };
+                const currentPage = window.location.pathname.split('/').pop();
+                const targetPage = redirectMap[user.role];
+                if (targetPage && !currentPage.includes(targetPage)) {
+                    window.location.href = targetPage;
+                }
+            }
+        })();
+
+        // ============================================================
+        // KEYBOARD SUPPORT
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('mainForm').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        selectRole('government');
+        
+        console.log('✅ HLMS Login & Register System ready');
+        console.log('📌 Tài khoản mặc định:');
+        console.log('   - Admin: admin / 123456');
+        console.log('   - Volunteer: volunteer / 123456');
+        console.log('📌 Đăng ký chỉ dành cho Admin và Volunteer');
+        console.log('📌 Người dân chỉ nhập tên + GPS/địa chỉ, không cần đăng ký');
+        console.log('📌 Khi ấn "Đăng ký ngay", form đăng nhập sẽ ẩn đi');
+    </script>
+</body>
+</html>

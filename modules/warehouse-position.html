@@ -1,0 +1,1088 @@
+<!-- ============================================================ -->
+<!-- MODULE: WAREHOUSE POSITION - TÍNH VỊ TRÍ KHO CỨU TRỢ -->
+<!-- ============================================================ -->
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    .formula-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        margin: 8px 0;
+        overflow-x: auto;
+    }
+    .formula-box .math { font-style: italic; color: #1e293b; }
+    .formula-box .highlight { color: #2563eb; font-weight: 600; }
+    
+    .criteria-card {
+        padding: 10px 12px;
+        margin: 6px 0;
+        border-radius: 6px;
+        background: #f8fafc;
+        border-left: 4px solid #3b82f6;
+    }
+    .criteria-card.risk { border-left-color: #ef4444; }
+    .criteria-card.access { border-left-color: #22c55e; }
+    .criteria-card.safety { border-left-color: #f59e0b; }
+    
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    .progress-bar .fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.8s ease;
+    }
+    
+    .district-marker {
+        background: #1d4ed8;
+        color: white;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 700;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .proposed-marker {
+        background: #22c55e;
+        color: white;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        border: 3px solid #15803d;
+        box-shadow: 0 2px 10px rgba(34,197,94,0.5);
+        animation: pulse-marker 2s infinite;
+    }
+    .candidate-marker {
+        background: #8b5cf6;
+        color: white;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        border: 2px solid #6d28d9;
+        box-shadow: 0 2px 6px rgba(139,92,246,0.4);
+    }
+    .cog-marker {
+        background: #f59e0b;
+        color: white;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        border: 2px solid #d97706;
+        box-shadow: 0 2px 6px rgba(245,158,11,0.4);
+    }
+    .location-point-marker {
+        background: #ec4899;
+        color: white;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        border: 2px solid #be185d;
+        box-shadow: 0 2px 6px rgba(236,72,153,0.4);
+    }
+    
+    @keyframes pulse-marker {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .score-ring {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        color: white;
+        margin: 0 auto;
+    }
+    .score-ring.excellent { background: #22c55e; }
+    .score-ring.good { background: #3b82f6; }
+    .score-ring.average { background: #f59e0b; }
+    .score-ring.poor { background: #ef4444; }
+    
+    #map-warehouse {
+        height: 380px;
+        width: 100%;
+        border-radius: 12px;
+        z-index: 1;
+    }
+    
+    .filter-group {
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .badge-location {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .badge-location.province { background: #dbeafe; color: #1d4ed8; }
+    .badge-location.district { background: #d1fae5; color: #065f46; }
+    .badge-location.commune { background: #fef3c7; color: #92400e; }
+</style>
+
+<!-- ============================================================ -->
+<!-- BỘ LỌC ĐỊA PHƯƠNG -->
+<!-- ============================================================ -->
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-filter text-slate-500 mr-1"></i> Bộ lọc địa phương</h4>
+        <span class="text-xs text-slate-400" id="filterLocationCount">0 điểm được chọn</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Tỉnh/Thành phố</label>
+            <select id="filterProvince" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="Quảng Bình">Quảng Bình</option>
+                <option value="Quảng Trị">Quảng Trị</option>
+                <option value="Thừa Thiên Huế">Thừa Thiên Huế</option>
+                <option value="Đà Nẵng">Đà Nẵng</option>
+                <option value="Quảng Nam">Quảng Nam</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Huyện/Thị xã</label>
+            <select id="filterDistrict" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Xã/Phường</label>
+            <select id="filterCommune" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase">Loại điểm cứu trợ</label>
+            <select id="filterLocationType" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
+                <option value="">Tất cả</option>
+                <option value="shelter">🏠 Shelter</option>
+                <option value="distribution">📦 Điểm phân phối</option>
+                <option value="hospital">🏥 Bệnh viện</option>
+                <option value="school">🏫 Trường học</option>
+                <option value="community">🏘️ Cộng đồng</option>
+            </select>
+        </div>
+    </div>
+    <div class="flex flex-wrap gap-2 mt-3">
+        <button onclick="applyLocationFilters()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa-solid fa-magnifying-glass"></i> Áp dụng bộ lọc
+        </button>
+        <button onclick="resetLocationFilters()" class="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-slate-300 transition">
+            <i class="fa-solid fa-undo"></i> Đặt lại
+        </button>
+        <button onclick="calculateWithFilters()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
+            <i class="fa-solid fa-calculator"></i> Tính toán với bộ lọc
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- THÔNG SỐ ĐẦU VÀO -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-sliders text-blue-500 mr-1"></i> Thông số tính toán</h4>
+        </div>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Mô hình</label>
+                <select id="whModelType" class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                    <option value="cog">Center of Gravity (COG)</option>
+                    <option value="pmedian">P-median</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Hệ số rủi ro</label>
+                <input type="range" id="whRiskFactor" min="0" max="2" step="0.1" value="1.0" class="w-full" />
+                <div class="flex justify-between text-xs text-slate-400">
+                    <span>0</span>
+                    <span id="whRiskValue">1.0</span>
+                    <span>2.0</span>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Tỷ lệ thiệt hại (H)</label>
+                <input type="number" id="whDamageRate" value="0.15" step="0.01" min="0" max="0.5" class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-500 uppercase">Bán kính phục vụ (km)</label>
+                <input type="number" id="whServiceRadius" value="50" class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+            </div>
+            <button onclick="calculateWarehouse()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                <i class="fa-solid fa-calculator"></i> TÍNH TOÁN
+            </button>
+            <button onclick="createProposal()" class="w-full bg-amber-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition" id="btnCreateProposal" disabled>
+                <i class="fa-solid fa-file-pen"></i> TẠO ĐỀ XUẤT
+            </button>
+        </div>
+    </div>
+
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-map text-blue-500 mr-1"></i> Bản đồ đề xuất vị trí kho</h4>
+        </div>
+        <div id="map-warehouse"></div>
+        <div class="flex flex-wrap gap-3 mt-2 text-[10px] text-slate-500">
+            <span><span class="inline-block w-3 h-3 rounded-full bg-[#1d4ed8] mr-1"></span> Điểm cứu trợ</span>
+            <span><span class="inline-block w-3 h-3 rounded-full bg-[#ec4899] mr-1"></span> Điểm được lọc</span>
+            <span><span class="inline-block w-3 h-3 rounded-full bg-[#22c55e] mr-1"></span> ⭐ Kho đề xuất</span>
+            <span><span class="inline-block w-3 h-3 rounded-full bg-[#8b5cf6] mr-1"></span> Phương án thay thế</span>
+            <span><span class="inline-block w-3 h-3 rounded-full bg-[#f59e0b] mr-1"></span> Điểm COG</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KẾT QUẢ -->
+<!-- ============================================================ -->
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-5">
+    <div class="card lg:col-span-1">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-flag-checkered text-amber-500 mr-1"></i> Vị trí đề xuất</h4>
+        </div>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Vĩ độ</span>
+                <span class="font-semibold" id="whResultLat">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Kinh độ</span>
+                <span class="font-semibold" id="whResultLng">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Khu vực</span>
+                <span class="font-semibold" id="whResultArea">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Bán kính phục vụ</span>
+                <span class="font-semibold" id="whResultRadius">-</span>
+            </div>
+            <div class="flex justify-between py-1">
+                <span class="text-slate-500">Điểm tổng hợp</span>
+                <span class="font-semibold text-emerald-600" id="whResultScore">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card lg:col-span-1">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-crosshairs text-purple-500 mr-1"></i> Phương pháp COG</h4>
+        </div>
+        <div class="text-sm space-y-2">
+            <div class="formula-box text-xs">
+                <span class="math">X</span> = <span class="highlight">Σ(W<sub>i</sub> × X<sub>i</sub>)</span> / <span class="highlight">ΣW<sub>i</sub></span>
+                <br>
+                <span class="math">Y</span> = <span class="highlight">Σ(W<sub>i</sub> × Y<sub>i</sub>)</span> / <span class="highlight">ΣW<sub>i</sub></span>
+            </div>
+            <div class="text-xs space-y-1">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Kinh độ (X)</span>
+                    <span class="font-semibold" id="cogX">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Vĩ độ (Y)</span>
+                    <span class="font-semibold" id="cogY">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card lg:col-span-1">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-gauge-high text-green-500 mr-1"></i> Chỉ tiêu đánh giá</h4>
+        </div>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Khoảng cách TB</span>
+                <span class="font-semibold" id="evalAvgDist">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Thời gian tiếp cận</span>
+                <span class="font-semibold" id="evalAccessTime">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-slate-500">Tỷ lệ bao phủ</span>
+                <span class="font-semibold" id="evalCoverage">-</span>
+            </div>
+            <div class="flex justify-between py-1">
+                <span class="text-slate-500">Số điểm được lọc</span>
+                <span class="font-semibold" id="filteredCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card lg:col-span-1">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-ranking-star text-yellow-500 mr-1"></i> Xếp hạng</h4>
+        </div>
+        <div class="text-center">
+            <div class="score-ring" id="scoreRing">-</div>
+            <p class="text-sm font-semibold mt-2" id="scoreLabel">Chưa tính toán</p>
+        </div>
+        <div class="mt-2 text-xs space-y-1">
+            <div class="flex justify-between">
+                <span>📦 Nhu cầu</span>
+                <span class="font-semibold" id="scoreDemand">-</span>
+            </div>
+            <div class="flex justify-between">
+                <span>🚗 Tiếp cận</span>
+                <span class="font-semibold" id="scoreAccess">-</span>
+            </div>
+            <div class="flex justify-between">
+                <span>🛡️ An toàn</span>
+                <span class="font-semibold" id="scoreSafety">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SO SÁNH PHƯƠNG ÁN -->
+<!-- ============================================================ -->
+
+<div class="card mb-5">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-scale-balanced text-indigo-500 mr-1"></i> So sánh các phương án</h4>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="whComparisonContainer">
+        <div class="text-center py-8 text-slate-400 text-sm col-span-3">Chạy tính toán để xem kết quả</div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DANH SÁCH ĐIỂM CỨU TRỢ ĐƯỢC LỌC -->
+<!-- ============================================================ -->
+
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fa-solid fa-list text-blue-500 mr-1"></i> Danh sách điểm cứu trợ được lọc</h4>
+        <span class="text-xs text-slate-400">(<span id="whLocationCount">0</span> điểm)</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Tên điểm</th>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Địa chỉ</th>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Loại</th>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Tỉnh</th>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Huyện</th>
+                    <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500">Xã</th>
+                    <th class="px-3 py-2 text-center text-xs font-semibold text-slate-500">Sức chứa</th>
+                </tr>
+            </thead>
+            <tbody id="whLocationTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// DỮ LIỆU MỞ RỘNG - THÊM THÔNG TIN ĐỊA LÝ CHO ĐIỂM CỨU TRỢ
+// ============================================================
+
+// Dữ liệu huyện mở rộng với thông tin xã
+const DISTRICT_DATA = {
+    'Quảng Bình': {
+        'Lệ Thủy': { lat: 17.1500, lng: 106.7200, communes: ['Xã Bình Mỹ', 'Xã An Thủy', 'Xã Sen Thủy'] },
+        'Quảng Ninh': { lat: 17.2600, lng: 106.5400, communes: ['Xã Vĩnh Ninh', 'Xã Trường Sơn', 'Xã Tân Ninh'] },
+        'Tuyên Hóa': { lat: 17.8500, lng: 106.3400, communes: ['Xã Đồng Hóa', 'Xã Thạch Hóa', 'Xã Thanh Hóa'] },
+        'Minh Hóa': { lat: 17.6800, lng: 105.9800, communes: ['Xã Minh Hóa', 'Xã Quy Hóa', 'Xã Hóa Phúc'] },
+        'Bố Trạch': { lat: 17.4800, lng: 106.4500, communes: ['Xã Tân Trạch', 'Xã Cự Nẫm', 'Xã Phú Trạch'] },
+        'Quảng Trạch': { lat: 17.8500, lng: 106.4200, communes: ['Xã Quảng Tiến', 'Xã Quảng Hợp', 'Xã Quảng Tùng'] },
+        'Ba Đồn': { lat: 17.7500, lng: 106.4200, communes: ['Phường Ba Đồn', 'Xã Quảng Lộc', 'Xã Quảng Minh'] },
+        'Đồng Hới': { lat: 17.4690, lng: 106.5970, communes: ['Phường Đồng Sơn', 'Xã Bảo Ninh', 'Xã Lộc Ninh'] }
+    },
+    'Quảng Trị': {
+        'Gio Linh': { lat: 16.7500, lng: 107.0800, communes: ['Xã Gio Mỹ', 'Xã Gio An', 'Xã Gio Hòa'] },
+        'Vĩnh Linh': { lat: 16.8000, lng: 107.0500, communes: ['Xã Vĩnh Long', 'Xã Vĩnh Thủy', 'Xã Vĩnh Hà'] },
+        'Hải Lăng': { lat: 16.6900, lng: 107.2400, communes: ['Xã Hải Thọ', 'Xã Hải Lâm', 'Xã Hải Vĩnh'] },
+        'Cam Lộ': { lat: 16.7900, lng: 106.9800, communes: ['Xã Cam Thành', 'Xã Cam Hiếu', 'Xã Cam Chính'] },
+        'Triệu Phong': { lat: 16.7800, lng: 107.1800, communes: ['Xã Triệu Độ', 'Xã Triệu Tài', 'Xã Triệu Thành'] }
+    },
+    'Thừa Thiên Huế': {
+        'Huế': { lat: 16.4637, lng: 107.5909, communes: ['Phường Phú Hội', 'Phường Phú Nhuận', 'Xã Hương Thọ'] },
+        'Phong Điền': { lat: 16.5500, lng: 107.3500, communes: ['Xã Phong An', 'Xã Phong Hòa', 'Xã Phong Hiền'] },
+        'Quảng Điền': { lat: 16.6200, lng: 107.4800, communes: ['Xã Quảng Vinh', 'Xã Quảng Thọ', 'Xã Quảng Phước'] }
+    },
+    'Đà Nẵng': {
+        'Hải Châu': { lat: 16.0600, lng: 108.2200, communes: ['Phường Hải Châu 1', 'Phường Hải Châu 2', 'Phường Thạch Thang'] },
+        'Thanh Khê': { lat: 16.0700, lng: 108.2000, communes: ['Phường Thanh Khê Đông', 'Phường Thanh Khê Tây', 'Phường Tam Thuận'] }
+    },
+    'Quảng Nam': {
+        'Tam Kỳ': { lat: 15.5667, lng: 108.4667, communes: ['Phường Hòa Hương', 'Phường Trường Xuân', 'Xã Tam Phú'] },
+        'Hội An': { lat: 15.8800, lng: 108.3300, communes: ['Phường Minh An', 'Phường Cẩm Phô', 'Xã Cẩm Hà'] },
+        'Duy Xuyên': { lat: 15.8000, lng: 108.2000, communes: ['Xã Duy Phú', 'Xã Duy Hòa', 'Xã Duy Sơn'] }
+    }
+};
+
+// Mở rộng dữ liệu điểm cứu trợ
+function getExtendedLocations() {
+    const locations = AppData.get('locations') || [];
+    // Thêm thông tin địa lý cho các điểm nếu chưa có
+    return locations.map(loc => {
+        if (!loc.province) {
+            // Tự động gán tỉnh dựa trên địa chỉ
+            for (const [province, districts] of Object.entries(DISTRICT_DATA)) {
+                for (const [district, info] of Object.entries(districts)) {
+                    if (loc.address && loc.address.includes(district)) {
+                        loc.province = province;
+                        loc.district = district;
+                        loc.lat = info.lat + (Math.random() - 0.5) * 0.02;
+                        loc.lng = info.lng + (Math.random() - 0.5) * 0.02;
+                        // Gán xã ngẫu nhiên
+                        if (info.communes && info.communes.length > 0) {
+                            loc.commune = info.communes[Math.floor(Math.random() * info.communes.length)];
+                        }
+                        break;
+                    }
+                }
+                if (loc.province) break;
+            }
+            // Nếu chưa có, gán mặc định
+            if (!loc.province) {
+                loc.province = 'Quảng Bình';
+                loc.district = 'Đồng Hới';
+                loc.lat = 17.4690 + (Math.random() - 0.5) * 0.02;
+                loc.lng = 106.5970 + (Math.random() - 0.5) * 0.02;
+                loc.commune = 'Xã Bảo Ninh';
+            }
+        }
+        return loc;
+    });
+}
+
+// ============================================================
+// BIẾN TOÀN CỤ
+// ============================================================
+
+let whMapInstance = null;
+let whWarehouseResult = null;
+let currentFilteredLocations = [];
+let currentCalculationResult = null;
+
+// ============================================================
+// KHỞI TẠO MODULE
+// ============================================================
+
+function init_admin_warehouse_position() {
+    // Risk factor display
+    document.getElementById('whRiskFactor').addEventListener('input', function() {
+        document.getElementById('whRiskValue').textContent = this.value;
+    });
+
+    // Province filter change
+    document.getElementById('filterProvince').addEventListener('change', function() {
+        updateDistrictFilter(this.value);
+    });
+
+    // District filter change
+    document.getElementById('filterDistrict').addEventListener('change', function() {
+        updateCommuneFilter(this.value);
+    });
+
+    renderLocationTable();
+    initWhMap();
+    updateDistrictFilter('');
+    
+    // Auto calculate with all locations
+    setTimeout(() => {
+        applyLocationFilters();
+        calculateWithFilters();
+    }, 500);
+}
+
+// ============================================================
+// CẬP NHẬT BỘ LỌC
+// ============================================================
+
+function updateDistrictFilter(province) {
+    const districtSelect = document.getElementById('filterDistrict');
+    const communeSelect = document.getElementById('filterCommune');
+    
+    districtSelect.innerHTML = '<option value="">Tất cả</option>';
+    communeSelect.innerHTML = '<option value="">Tất cả</option>';
+    
+    if (province && DISTRICT_DATA[province]) {
+        Object.keys(DISTRICT_DATA[province]).forEach(district => {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            districtSelect.appendChild(option);
+        });
+    }
+}
+
+function updateCommuneFilter(district) {
+    const communeSelect = document.getElementById('filterCommune');
+    communeSelect.innerHTML = '<option value="">Tất cả</option>';
+    
+    const province = document.getElementById('filterProvince').value;
+    if (province && district && DISTRICT_DATA[province] && DISTRICT_DATA[province][district]) {
+        const communes = DISTRICT_DATA[province][district].communes || [];
+        communes.forEach(commune => {
+            const option = document.createElement('option');
+            option.value = commune;
+            option.textContent = commune;
+            communeSelect.appendChild(option);
+        });
+    }
+}
+
+// ============================================================
+// ÁP DỤNG BỘ LỌC
+// ============================================================
+
+function applyLocationFilters() {
+    const province = document.getElementById('filterProvince').value;
+    const district = document.getElementById('filterDistrict').value;
+    const commune = document.getElementById('filterCommune').value;
+    const type = document.getElementById('filterLocationType').value;
+    
+    const locations = getExtendedLocations();
+    
+    currentFilteredLocations = locations.filter(loc => {
+        let match = true;
+        if (province && loc.province !== province) match = false;
+        if (district && loc.district !== district) match = false;
+        if (commune && loc.commune !== commune) match = false;
+        if (type && loc.type !== type) match = false;
+        return match;
+    });
+    
+    document.getElementById('filterLocationCount').textContent = `${currentFilteredLocations.length} điểm được chọn`;
+    document.getElementById('filteredCount').textContent = currentFilteredLocations.length;
+    
+    renderLocationTable();
+    updateWhMapWithFilters();
+    
+    showNotification(`✅ Đã lọc được ${currentFilteredLocations.length} điểm cứu trợ`, 'success');
+}
+
+function resetLocationFilters() {
+    document.getElementById('filterProvince').value = '';
+    document.getElementById('filterDistrict').innerHTML = '<option value="">Tất cả</option>';
+    document.getElementById('filterCommune').innerHTML = '<option value="">Tất cả</option>';
+    document.getElementById('filterLocationType').value = '';
+    applyLocationFilters();
+}
+
+// ============================================================
+// HIỂN THỊ DANH SÁCH ĐIỂM CỨU TRỢ
+// ============================================================
+
+function renderLocationTable() {
+    const container = document.getElementById('whLocationTable');
+    if (!container) return;
+    
+    const locations = currentFilteredLocations.length > 0 ? currentFilteredLocations : getExtendedLocations();
+    document.getElementById('whLocationCount').textContent = locations.length;
+    
+    if (locations.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-8 text-slate-400 text-sm">Không có điểm cứu trợ nào</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const typeLabels = {
+        'shelter': '🏠 Shelter',
+        'distribution': '📦 Điểm phân phối',
+        'hospital': '🏥 Bệnh viện',
+        'school': '🏫 Trường học',
+        'community': '🏘️ Cộng đồng'
+    };
+    
+    container.innerHTML = locations.map(loc => `
+        <tr class="border-b border-gray-100 hover:bg-slate-50">
+            <td class="px-3 py-2 font-medium">${loc.name}</td>
+            <td class="px-3 py-2 text-slate-500">${loc.address || 'N/A'}</td>
+            <td class="px-3 py-2">${typeLabels[loc.type] || loc.type}</td>
+            <td class="px-3 py-2 text-slate-500">${loc.province || 'N/A'}</td>
+            <td class="px-3 py-2 text-slate-500">${loc.district || 'N/A'}</td>
+            <td class="px-3 py-2 text-slate-500">${loc.commune || 'N/A'}</td>
+            <td class="px-3 py-2 text-center font-semibold">${loc.capacity || 0}</td>
+        </tr>
+    `).join('');
+}
+
+// ============================================================
+// TÍNH TOÁN VỚI BỘ LỌC
+// ============================================================
+
+function calculateWithFilters() {
+    const locations = currentFilteredLocations.length > 0 ? currentFilteredLocations : getExtendedLocations();
+    
+    if (locations.length < 3) {
+        showNotification('⚠️ Cần ít nhất 3 điểm cứu trợ để tính toán!', 'error');
+        return;
+    }
+    
+    // Chuyển đổi dữ liệu điểm cứu trợ thành dữ liệu huyện cho tính toán
+    const districtData = locations.map(loc => ({
+        id: loc.id || 'loc_' + Math.random(),
+        name: loc.name,
+        lat: loc.lat || 17.4690 + (Math.random() - 0.5) * 0.1,
+        lng: loc.lng || 106.5970 + (Math.random() - 0.5) * 0.1,
+        population: loc.capacity || 1000 + Math.floor(Math.random() * 5000),
+        risk: 0.3 + Math.random() * 0.4,
+        province: loc.province || 'Quảng Bình'
+    }));
+    
+    // Lưu vào biến toàn cục để tính toán
+    window.WH_DISTRICTS_DATA = districtData;
+    
+    // Gọi hàm tính toán chính
+    calculateWarehouse();
+    
+    // Enable nút tạo đề xuất
+    document.getElementById('btnCreateProposal').disabled = false;
+    currentCalculationResult = { locations, districtData };
+}
+
+// ============================================================
+// HÀM TÍNH TOÁN CHÍNH (CẬP NHẬT)
+// ============================================================
+
+function calculateWarehouse() {
+    const data = window.WH_DISTRICTS_DATA || WH_DISTRICTS_DATA;
+    if (data.length < 3) {
+        showNotification('⚠️ Cần ít nhất 3 điểm để tính toán!', 'error');
+        return;
+    }
+
+    const riskFactor = parseFloat(document.getElementById('whRiskFactor').value);
+    const damageRate = parseFloat(document.getElementById('whDamageRate').value);
+    const serviceRadius = parseFloat(document.getElementById('whServiceRadius').value) || 50;
+
+    // Tính nhu cầu
+    const H = damageRate;
+    data.forEach(d => {
+        d.demand = d.population * d.risk * H * riskFactor;
+        d.weight = d.demand;
+    });
+
+    // Tính COG
+    let sumWX = 0, sumWY = 0, sumW = 0;
+    data.forEach(d => {
+        sumWX += d.weight * d.lng;
+        sumWY += d.weight * d.lat;
+        sumW += d.weight;
+    });
+
+    const cogX = sumWX / sumW;
+    const cogY = sumWY / sumW;
+
+    // Tìm điểm gần nhất
+    let nearest = null, minDist = Infinity;
+    data.forEach(d => {
+        const dist = Math.sqrt(Math.pow(d.lat - cogY, 2) + Math.pow(d.lng - cogX, 2));
+        if (dist < minDist) { minDist = dist; nearest = d; }
+    });
+
+    // Tính chỉ tiêu
+    let totalDist = 0, coveredCount = 0;
+    data.forEach(d => {
+        const dist = Math.sqrt(Math.pow(d.lat - cogY, 2) + Math.pow(d.lng - cogX, 2)) * 111;
+        totalDist += dist;
+        if (dist <= serviceRadius) coveredCount++;
+    });
+
+    const avgDist = totalDist / data.length;
+    const avgTime = avgDist / 40 * 60;
+    const coveragePercent = (coveredCount / data.length * 100);
+
+    // Tạo phương án thay thế
+    const candidates = generateCandidates(cogY, cogX, data);
+    const scored = evaluateCandidates(candidates, data, serviceRadius);
+    scored.sort((a, b) => b.totalScore - a.totalScore);
+    const best = scored[0];
+
+    whWarehouseResult = { cogY, cogX, avgDist, avgTime, coveragePercent, best, candidates: scored, serviceRadius, nearest };
+
+    // Cập nhật UI
+    document.getElementById('whResultLat').textContent = cogY.toFixed(4);
+    document.getElementById('whResultLng').textContent = cogX.toFixed(4);
+    document.getElementById('whResultArea').textContent = best ? best.area : 'Khu vực trung tâm';
+    document.getElementById('whResultRadius').textContent = serviceRadius + ' km';
+    document.getElementById('whResultScore').textContent = best ? best.totalScore.toFixed(2) + '/10' : '-';
+    
+    document.getElementById('cogX').textContent = cogX.toFixed(4);
+    document.getElementById('cogY').textContent = cogY.toFixed(4);
+    
+    document.getElementById('evalAvgDist').textContent = avgDist.toFixed(2) + ' km';
+    document.getElementById('evalAccessTime').textContent = avgTime.toFixed(0) + ' phút';
+    document.getElementById('evalCoverage').textContent = coveragePercent.toFixed(0) + '%';
+
+    // Score ring
+    if (best) {
+        const total = best.totalScore;
+        const ring = document.getElementById('scoreRing');
+        const label = document.getElementById('scoreLabel');
+        ring.textContent = total.toFixed(1);
+        if (total >= 8) { ring.className = 'score-ring excellent'; label.textContent = '🌟 Xuất sắc'; }
+        else if (total >= 6) { ring.className = 'score-ring good'; label.textContent = '👍 Tốt'; }
+        else if (total >= 4) { ring.className = 'score-ring average'; label.textContent = '📊 Trung bình'; }
+        else { ring.className = 'score-ring poor'; label.textContent = '⚠️ Cần cải thiện'; }
+        
+        document.getElementById('scoreDemand').textContent = best.demandScore.toFixed(1) + '/10';
+        document.getElementById('scoreAccess').textContent = best.distanceScore.toFixed(1) + '/10';
+        document.getElementById('scoreSafety').textContent = best.safetyScore.toFixed(1) + '/10';
+    }
+
+    updateComparison(scored);
+    updateWhMap(cogY, cogX, serviceRadius, scored);
+
+    showNotification('✅ Đã tính toán thành công!', 'success');
+}
+
+// ============================================================
+// TẠO ĐỀ XUẤT
+// ============================================================
+
+function createProposal() {
+    if (!whWarehouseResult || !currentCalculationResult) {
+        showNotification('⚠️ Vui lòng tính toán trước khi tạo đề xuất!', 'error');
+        return;
+    }
+    
+    const best = whWarehouseResult.best;
+    if (!best) {
+        showNotification('⚠️ Không có kết quả để tạo đề xuất!', 'error');
+        return;
+    }
+    
+    // Tạo phương án cứu trợ từ kết quả tính toán
+    const proposal = {
+        id: 'prop_' + Date.now(),
+        code: 'DC' + String(Math.floor(Math.random() * 10000)).padStart(4, '0'),
+        title: `Đề xuất kho cứu trợ tại ${best.area}`,
+        from: 'Điểm tính toán',
+        to: best.area,
+        shelter: Math.floor(100 + Math.random() * 200),
+        status: 'planning',
+        time: 'Vừa tạo',
+        source: 'multi-source',
+        lat: best.lat,
+        lng: best.lng,
+        score: best.totalScore,
+        filteredLocations: currentFilteredLocations.length,
+        createdAt: new Date().toISOString()
+    };
+    
+    // Lưu vào AppData
+    const distributions = AppData.getDistributions();
+    distributions.push(proposal);
+    AppData.setDistributions(distributions);
+    
+    // Kích hoạt sự kiện cập nhật
+    window.dispatchEvent(new CustomEvent('dataChanged', { 
+        detail: { key: AppData.KEYS.DISTRIBUTIONS } 
+    }));
+    
+    showNotification(`✅ Đã tạo đề xuất "${proposal.title}" thành công!`, 'success');
+    document.getElementById('btnCreateProposal').disabled = true;
+}
+
+// ============================================================
+// HÀM HỖ TRỢ
+// ============================================================
+
+function generateCandidates(cogY, cogX, data) {
+    const sorted = [...data].sort((a, b) => b.demand - a.demand);
+    const topDistricts = sorted.slice(0, 3);
+
+    return topDistricts.map((d, idx) => {
+        const lat = d.lat + (Math.random() - 0.5) * 0.03;
+        const lng = d.lng + (Math.random() - 0.5) * 0.03;
+        let totalDist = 0;
+        data.forEach(p => {
+            totalDist += Math.sqrt(Math.pow(p.lat - lat, 2) + Math.pow(p.lng - lng, 2)) * 111;
+        });
+        return {
+            name: `Phương án ${String.fromCharCode(65 + idx)}`,
+            area: d.name,
+            lat, lng,
+            avgDist: totalDist / data.length,
+            avgTime: totalDist / data.length / 40 * 60,
+            demandServed: d.demand
+        };
+    });
+}
+
+function evaluateCandidates(candidates, data, serviceRadius) {
+    return candidates.map(c => {
+        const served = data.filter(d => {
+            const dist = Math.sqrt(Math.pow(d.lat - c.lat, 2) + Math.pow(d.lng - c.lng, 2)) * 111;
+            return dist <= serviceRadius;
+        }).length;
+
+        const demandServed = data.filter(d => {
+            const dist = Math.sqrt(Math.pow(d.lat - c.lat, 2) + Math.pow(d.lng - c.lng, 2)) * 111;
+            return dist <= serviceRadius;
+        }).reduce((sum, d) => sum + d.demand, 0);
+
+        const totalDemand = data.reduce((s, d) => s + d.demand, 0);
+        const maxDist = Math.max(...candidates.map(x => x.avgDist));
+
+        const coverageScore = (served / data.length) * 10;
+        const distanceScore = maxDist > 0 ? (1 - c.avgDist / maxDist * 0.6) * 10 : 5;
+        const demandScore = Math.min(10, (demandServed / totalDemand) * 20);
+        const safetyScore = 7 + Math.random() * 2;
+
+        const totalScore = 0.35 * coverageScore + 0.25 * distanceScore + 0.25 * demandScore + 0.15 * safetyScore;
+
+        return { ...c, served, demandServed, coverageScore, distanceScore, demandScore, safetyScore, totalScore };
+    });
+}
+
+function updateComparison(candidates) {
+    const container = document.getElementById('whComparisonContainer');
+    if (!container || candidates.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm col-span-3">Chạy tính toán để xem kết quả</div>`;
+        return;
+    }
+
+    const best = candidates.reduce((a, b) => a.totalScore > b.totalScore ? a : b);
+
+    container.innerHTML = candidates.map(c => `
+        <div class="p-3 rounded-lg border ${c === best ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white'}">
+            <div class="flex justify-between items-center">
+                <span class="font-semibold text-sm">${c.name}</span>
+                ${c === best ? '<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">⭐ Tối ưu</span>' : ''}
+            </div>
+            <div class="text-xs text-slate-500 mt-1">📍 ${c.area}</div>
+            <div class="grid grid-cols-2 gap-1 text-xs mt-1">
+                <span class="text-slate-500">🏛 ${c.served}/${currentFilteredLocations.length || 0} điểm</span>
+                <span class="text-slate-500">⏱ ${c.avgTime.toFixed(0)} phút</span>
+            </div>
+            <div class="progress-bar mt-1">
+                <div class="fill" style="width: ${c.totalScore/10*100}%; background: ${c === best ? '#22c55e' : '#3b82f6'};"></div>
+            </div>
+            <div class="flex justify-between text-xs mt-0.5">
+                <span class="text-slate-400">Điểm tổng hợp</span>
+                <span class="font-semibold ${c === best ? 'text-emerald-600' : 'text-slate-600'}">${c.totalScore.toFixed(2)}/10</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ============================================================
+// CẬP NHẬT BẢN ĐỒ
+// ============================================================
+
+function updateWhMap(cogY, cogX, serviceRadius, candidates) {
+    if (!whMapInstance) return;
+
+    whMapInstance.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) return;
+        whMapInstance.removeLayer(layer);
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(whMapInstance);
+
+    // Hiển thị điểm cứu trợ được lọc
+    const locations = currentFilteredLocations.length > 0 ? currentFilteredLocations : getExtendedLocations();
+    locations.forEach(loc => {
+        const lat = loc.lat || 17.4690 + (Math.random() - 0.5) * 0.1;
+        const lng = loc.lng || 106.5970 + (Math.random() - 0.5) * 0.1;
+        const popup = `<b>📍 ${loc.name}</b><br>🏛 ${loc.address || 'N/A'}<br>📦 Sức chứa: ${loc.capacity || 0}<br>🏷️ ${loc.province || ''} - ${loc.district || ''}`;
+        const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'location-point-marker',
+                html: '🏠',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            })
+        }).addTo(whMapInstance);
+        marker.bindPopup(popup);
+    });
+
+    // Candidates
+    if (candidates && candidates.length > 0) {
+        candidates.forEach((c, idx) => {
+            const isBest = idx === 0;
+            const marker = L.marker([c.lat, c.lng], {
+                icon: L.divIcon({
+                    className: isBest ? 'proposed-marker' : 'candidate-marker',
+                    html: isBest ? '📦' : '🏢',
+                    iconSize: isBest ? [48, 48] : [36, 36],
+                    iconAnchor: isBest ? [24, 24] : [18, 18]
+                })
+            }).addTo(whMapInstance);
+            marker.bindPopup(`<b>${isBest ? '⭐ KHO ĐỀ XUẤT' : c.name}</b><br>📍 ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}<br>🏛 ${c.area}`);
+            
+            if (isBest) {
+                L.circle([c.lat, c.lng], {
+                    radius: serviceRadius * 1000,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.04,
+                    weight: 2,
+                    dashArray: '8,8'
+                }).addTo(whMapInstance);
+            }
+        });
+    }
+
+    // COG
+    L.marker([cogY, cogX], {
+        icon: L.divIcon({
+            className: 'cog-marker',
+            html: '🎯',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        })
+    }).addTo(whMapInstance).bindPopup(`<b>🎯 Điểm COG</b><br>📍 ${cogY.toFixed(4)}, ${cogX.toFixed(4)}`);
+
+    whMapInstance.setView([cogY || 16.8, cogX || 106.8], 9);
+    setTimeout(() => whMapInstance.invalidateSize(), 300);
+}
+
+function updateWhMapWithFilters() {
+    if (!whMapInstance) return;
+    
+    // Nếu đã có kết quả tính toán, cập nhật lại bản đồ
+    if (whWarehouseResult) {
+        const { cogY, cogX, serviceRadius, candidates } = whWarehouseResult;
+        updateWhMap(cogY, cogX, serviceRadius, candidates);
+    } else {
+        // Hiển thị các điểm được lọc
+        whMapInstance.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) return;
+            whMapInstance.removeLayer(layer);
+        });
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(whMapInstance);
+        
+        const locations = currentFilteredLocations.length > 0 ? currentFilteredLocations : getExtendedLocations();
+        locations.forEach(loc => {
+            const lat = loc.lat || 17.4690 + (Math.random() - 0.5) * 0.1;
+            const lng = loc.lng || 106.5970 + (Math.random() - 0.5) * 0.1;
+            const marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'location-point-marker',
+                    html: '🏠',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(whMapInstance);
+            marker.bindPopup(`<b>📍 ${loc.name}</b><br>🏛 ${loc.address || 'N/A'}`);
+        });
+        
+        if (locations.length > 0) {
+            const centerLat = locations.reduce((sum, l) => sum + (l.lat || 17.4690), 0) / locations.length;
+            const centerLng = locations.reduce((sum, l) => sum + (l.lng || 106.5970), 0) / locations.length;
+            whMapInstance.setView([centerLat, centerLng], 9);
+        }
+    }
+}
+
+// ============================================================
+// KHỞI TẠO BẢN ĐỒ
+// ============================================================
+
+function initWhMap() {
+    const container = document.getElementById('map-warehouse');
+    if (!container) return;
+    
+    if (whMapInstance) {
+        whMapInstance.invalidateSize();
+        return;
+    }
+    
+    if (typeof L === 'undefined') {
+        setTimeout(initWhMap, 500);
+        return;
+    }
+    
+    whMapInstance = L.map('map-warehouse', {
+        center: [16.8, 106.8],
+        zoom: 9,
+        zoomControl: true
+    });
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(whMapInstance);
+    
+    setTimeout(() => whMapInstance.invalidateSize(), 300);
+}
+
+// ============================================================
+// AUTO INIT
+// ============================================================
+
+if (document.readyState === 'complete') {
+    setTimeout(init_admin_warehouse_position, 500);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(init_admin_warehouse_position, 500);
+    });
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS
+// ============================================================
+
+window.init_admin_warehouse_position = init_admin_warehouse_position;
+window.applyLocationFilters = applyLocationFilters;
+window.resetLocationFilters = resetLocationFilters;
+window.calculateWithFilters = calculateWithFilters;
+window.calculateWarehouse = calculateWarehouse;
+window.createProposal = createProposal;
+</script>
